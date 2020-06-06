@@ -1,28 +1,28 @@
 {
   "name": "gooey",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "CLI tool for working with Terasology workspaces",
   "bin": {
     "gooey": "cli.js"
   },
-  "main": "index.js",
   "scripts": {},
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/skaldarnar/Gooey.git"
+    "url": "git+https://github.com/skaldarnar/node-gooey"
   },
   "author": "Skaldarnar",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/skaldarnar/Gooey/issues"
+    "url": "https://github.com/skaldarnar/node-gooey/issues"
   },
-  "homepage": "https://github.com/skaldarnar/Gooey#readme",
+  "homepage": "https://github.com/skaldarnar/node-gooey#readme",
   "dependencies": {
     "@octokit/rest": "^17.9.2",
     "dot-properties": "^1.0.1",
     "execa": "^4.0.1",
     "fs-extra": "^9.0.0",
     "isomorphic-git": "^1.4.0",
+    "semver": "^7.3.2",
     "yargs": "^15.3.1"
   }
 }

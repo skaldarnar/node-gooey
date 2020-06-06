@@ -1,15 +1,20 @@
 #!/usr/bin/env node
 
 const { Octokit } = require("@octokit/rest");
+
 const octokit = new Octokit();
 const { parse } = require('dot-properties')
 const fs = require('fs-extra')
 const execa = require("execa")
 
+const indexRepo = {
+  owner: "Terasology",
+  repo: "Index"
+}
+
 async function getDistro(distro) {
   return octokit.repos.getContents({
-    owner: "Terasology",
-    repo: "Index",
+    ...indexRepo,
     path: `/distros/${distro.toLowerCase()}/gradle.properties`
   }).then(response => {  
     // content will be base64 encoded
@@ -18,6 +23,17 @@ async function getDistro(distro) {
     return modules.split(",")
   })
 }
+
+const availableDistributions = async () =>
+    octokit.repos.getContents({
+      ...indexRepo,
+      path: '/distros'
+    }).then(response => {
+      const distros = response.data.filter(e => e.type === "dir").map(e => e.name);
+      console.log(JSON.stringify(response, null, 2))
+
+      return distros;
+    })
 
 async function cloneModules(modules) {
   if (await fs.exists("./groovyw")) {
@@ -28,12 +44,13 @@ async function cloneModules(modules) {
   }
 }
 
-const cloneDistro = async (distro) => {
+const cloneDistribution = async (distro) => {
   const modules = await getDistro(distro)
   console.log(modules)
   cloneModules(modules)
 }
 
 module.exports = {
-  cloneDistro
+  cloneDistribution,
+  availableDistributions
 }
