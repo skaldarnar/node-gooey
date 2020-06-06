@@ -13,11 +13,7 @@ module.exports.builder = (yargs) => {
       choices: [
         "major",
         "premajor",
-        "minor",
-        "preminor",
-        "patch",
-        "prepatch",
-        "prerelease",
+        "minor"
       ],
       default: "minor",
     })
@@ -51,14 +47,25 @@ module.exports.handler = async (argv) => {
     createReleaseTag({ version: releaseVersion, sha: releaseSha });
   }
 
-  const nextVerion = semver.inc(releaseVersion, "prepatch", "SNAPSHOT").slice(0, -2);
-  moduleInfo.version = nextVerion;
-  await writeAndCommit(moduleInfo, `Prepare new SNAPSHOT version ${nextVerion}`);
+  const nextVersion = nextSnapshot(releaseVersion);
+  moduleInfo.version = nextVersion;
+  await writeAndCommit(moduleInfo, `Prepare new SNAPSHOT version ${nextVersion}`);
 
   console.log(
-    `Successfully prepared release for ${releaseVersion} (${releaseSha.slice(0, 7)}) and bumped version to ${nextVerion}.`
+    `Successfully prepared release for ${releaseVersion} (${releaseSha.slice(0, 7)}) and bumped version to ${nextVersion}.`
   );
 };
+
+/**
+ * Increments the given version to the next patch-level snapshot prerelease.
+ * 
+ * For instance, this increments `1.2.3` to `1.2.4-SNAPSHOT`.
+ * 
+ * @param {string} version the current (release) version to increment to next snapshot
+ */
+function nextSnapshot(version) {
+  return semver.coerce(version, "prepatch").version + "-SNAPSHOT";
+}
 
 /**
  * Writes the given object to `module.txt` and commits the change stating the message.
