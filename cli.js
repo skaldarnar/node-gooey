@@ -25,6 +25,24 @@ require("yargs")
       gooey.cloneDistribution(argv.distro);
     }
   )
+  .command(
+    "topics <org> [topics..]",
+    "add given topics to all repositories of the org",
+    (yargs) => {
+      yargs
+        .positional("org", {
+          type: "string",
+          describe: "the owner (GitHub user or org)",
+        })
+        .positional("topics", {
+          type: "array",
+          describe: "the topics to add"
+        });
+    },
+    async (argv) => {
+      await gooey.addTopics(argv.org, argv.topics);
+    }
+  )
   .commandDir("./commands")
   .option("help", {
     alias: "h",
