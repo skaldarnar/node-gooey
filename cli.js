@@ -44,9 +44,9 @@ require("yargs")
     }
   )
   .commandDir("./commands")
+  .demandCommand()
   .option("help", {
     alias: "h",
     description: "Show this help message an exit"
   })
-  .demandCommand()
   .help().argv;
