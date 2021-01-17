@@ -9,9 +9,13 @@ function chunkArray(array, size) {
   return result
 }
 
-
-async function processInChunks(tasks, chunkSize=20) {
-  const chunks = chunkArray(tasks, chunkSize);
+/**
+ * @param {Array<() => Promise<any>>} tasks 
+ * @param {Object} options 
+ * @param {number} options.chunkSize
+ */
+async function processInChunks(tasks, options={chunkSize:20}) {
+  const chunks = chunkArray(tasks, options.chunkSize);
 
   for (const chunk of chunks) {
     await Promise.all(

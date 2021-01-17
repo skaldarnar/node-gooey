@@ -42,7 +42,8 @@ module.exports.builder = (yargs) => {
         const modules = await listModules(workspace);
 
         processInChunks(
-          modules.map(m => async () => update(m).then(console.log))
+          modules.map(m => async () => update(m).then(console.log)),
+          { chunkSize: 10}
         );
       }
     )
@@ -59,7 +60,8 @@ module.exports.builder = (yargs) => {
             let resetMsg = await reset(m);
             let updateMsg= await update(m)
             console.log(resetMsg + "\n" + updateMsg)
-          })
+          }),
+          { chunkSize: 10}
         );
       }
     )
