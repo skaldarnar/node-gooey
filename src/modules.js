@@ -72,49 +72,8 @@ async function listModules(workspace) {
 }
 
 
-async function lockfile(workspace) {
-  const modules = await listModules(workspace);
-  const entries = await Promise.all(modules.map(async dir => {
-    const sha = await git.resolveRef({
-      fs, dir, ref: "HEAD"
-    });
-    const moduleInfo = JSON.parse(fs.readFileSync(resolve(dir, "module.txt"), 'utf8'));
-
-    return {
-      name: moduleInfo.id,
-      version: moduleInfo.version,
-      dir: relative(workspace, dir), 
-      sha
-    }
-  }));
-
-  const engineInfo = JSON.parse(fs.readFileSync(join(workspace, "engine/src/main/resources/engine-module.txt"), "utf-8"));
-  const sha = await git.resolveRef({
-    fs, dir: workspace, ref: "HEAD"
-  })
-
-  let lock = {
-    name: "Terasology",
-    version: engineInfo.version,
-    sha,
-    lockfileVersion: 1,
-    modules: { }
-  }
-
-  for (const m of entries) {
-    lock.modules[m.dir] = {
-      name: m.name,
-      version: m.version,
-      sha: m.sha
-    }
-  }
-
-  return lock;
-}
-
 module.exports = {
   listModules,
   update,
   reset,
-  lockfile,
 };
