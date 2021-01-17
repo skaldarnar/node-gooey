@@ -6,20 +6,41 @@ const fs = require("fs-extra");
 const { join, resolve, relative } = require("path");
 const git = require("isomorphic-git");
 
+/**
+ * @typedef {Object} Options
+ * @property {boolean} pinBranch - safe the ref to the branch instead of the commit SHA
+ */
 
-async function moduleLock(workspace) {
+/**
+ * Resolve the ref for the given repository, either to the commit SHA or the current branch.
+ * 
+ * @param {string} dir 
+ * @param {Options} options
+ */
+async function getRef(dir, options) {
+  const depth = options.pinBranch ? 2 : 1;
+  const ref = await git.resolveRef({
+    fs, dir, ref: "HEAD", depth
+  })
+  return ref;
+}
+
+/**
+ * 
+ * @param {string} workspace 
+ * @param {Options} options 
+ */
+async function moduleLock(workspace, options) {
   const modules = await listModules(workspace);
   const entries = await Promise.all(modules.map(async dir => {
-    const sha = await git.resolveRef({
-      fs, dir, ref: "HEAD"
-    });
+    const ref = await getRef(dir, options);
     const moduleInfo = JSON.parse(fs.readFileSync(resolve(dir, "module.txt"), 'utf8'));
 
     return {
       name: moduleInfo.id,
       version: moduleInfo.version,
       dir: relative(workspace, dir),
-      sha
+      ref
     }
   }));
 
@@ -29,30 +50,38 @@ async function moduleLock(workspace) {
     result[m.dir] = {
       name: m.name,
       version: m.version,
-      sha: m.sha
+      ref: m.ref
     }
   }
   return result;
 }
 
-async function libLock(workspace) {
+/**
+ * 
+ * @param {string} workspace 
+ * @param {Options} options 
+ */
+async function libLock(workspace, options) {
   console.log(chalk.yellow("Pinning libraries is not supported yet"));
   return {};
 }
 
-async function lockfile(workspace) {
+/**
+ * 
+ * @param {string} workspace 
+ * @param {Options} options 
+ */
+async function lockfile(workspace, options) {
   const engineInfo = JSON.parse(fs.readFileSync(join(workspace, "engine/src/main/resources/engine-module.txt"), "utf-8"));
-  const sha = await git.resolveRef({
-    fs, dir: workspace, ref: "HEAD"
-  })
+  const ref = await getRef(workspace, options);
 
   let lock = {
     name: "Terasology",
     version: engineInfo.version,
-    sha,
+    ref,
     lockfileVersion: 1,
-    modules: await moduleLock(workspace),
-    libs: await libLock(workspace),
+    modules: await moduleLock(workspace, options),
+    libs: await libLock(workspace, options),
   }
 
   return lock;
