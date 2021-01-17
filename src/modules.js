@@ -60,6 +60,16 @@ function isModule(dir) {
   return fs.pathExistsSync(moduleInfo);
 }
 
+async function getModuleInfo(dir) {
+  const branch = await git.currentBranch({fs, dir});
+  const info = JSON.parse(fs.readFileSync(resolve(dir, "module.txt"), 'utf8'));
+  return {
+    dir, 
+    info,
+    branch
+  }
+}
+
 async function listModules(workspace) {
   if (!workspace) return [];
   const modules = 
@@ -73,7 +83,8 @@ async function listModules(workspace) {
 
 
 module.exports = {
+  getModuleInfo,
   listModules,
-  update,
   reset,
+  update,
 };
