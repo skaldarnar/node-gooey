@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/skaldarnar/node-gooey#readme",
   "dependencies": {
+    "@octokit/graphql": "^4.6.0",
     "@octokit/rest": "^17.11.2",
     "chalk": "^4.1.0",
     "dot-properties": "^1.0.1",
