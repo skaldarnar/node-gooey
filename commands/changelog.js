@@ -24,6 +24,10 @@ module.exports.builder = (yargs) => {
     describe: "Pretty print the output with colors and formatting",
     type: "boolean",
   })
+  .option("since", {
+    describe: "The timestamp (ISO 8601) to start the changelog from",
+    type: "string"
+  })
 };
 
 module.exports.handler = async (argv) => {
@@ -31,7 +35,10 @@ module.exports.handler = async (argv) => {
       repo: "Terasology",
       owner: "MovingBlocks",
     }
-    const since = await dateOfLastRelease(target);
+    const since = argv.since || await dateOfLastRelease(target);
+
+    console.log(since);
+
     const merged = await mergedPrsSince(since, target);
 
     const lines = merged.map(e => display(e.node, argv));
