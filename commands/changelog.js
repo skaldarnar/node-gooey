@@ -43,6 +43,12 @@ module.exports.builder = (yargs) => {
     describe: "The GitHub repository - if omitted, collect from all repos of 'owner'",
     type: "string"
   })
+  .option("users", {
+    describe: "List all users that contributed to the changeset",
+    type: "boolean",
+    alias: "contribtors"
+  }
+  )
   .check((argv, options) => {
     if (!argv.since && !argv.repo) {
       throw new Error("At least one of 'since' and 'repo' must be specified");
@@ -59,7 +65,12 @@ module.exports.handler = async (argv) => {
     const from = argv.repo ? `repo:${argv.owner}/${argv.repo}` : `org:${argv.owner}`
     const merged = await mergedPrsSince(since, argv.until, from);
 
-    const lines = merged.map(e => display(e.node, argv));
+    let lines;
+    if (argv.users) {
+      lines = [... new Set(merged.map(e => e.node.author.login))].sort().map(user => `@${user}`);
+    } else {
+      const lines = merged.map(e => display(e.node, argv));
+    }
 
     if (argv.out) {
       await fs.writeFile(argv.out, lines.join("\n"))
