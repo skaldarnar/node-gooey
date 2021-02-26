@@ -30,6 +30,10 @@ module.exports.builder = (yargs) => {
     describe: "The timestamp (ISO 8601) to start the changelog from. If both 'owner' and 'repo' are specified this will use the timestamp of the latest release.",
     type: "string"
   })
+  .option("until", {
+    describe: "The timestamp (ISO 8601) until when the changelog should be computed. Current date if omitted.",
+    type: "string"
+  })
   .option("owner", {
     describe: "The GitHub owner or organization",
     type: "string"
@@ -53,7 +57,7 @@ module.exports.handler = async (argv) => {
     const since = argv.since || await dateOfLastRelease(argv.owner, argv.repo);
 
     const from = argv.repo ? `repo:${argv.owner}/${argv.repo}` : `org:${argv.owner}`
-    const merged = await mergedPrsSince(since, from);
+    const merged = await mergedPrsSince(since, argv.until, from);
 
     const lines = merged.map(e => display(e.node, argv));
 
@@ -104,7 +108,7 @@ async function dateOfLastRelease(owner, repo) {
   return repository.releases.nodes[0].publishedAt;
 }
 
-async function mergedPrsSince(since, from) {
+async function mergedPrsSince(since, until, from) {
   const query = `query Changelog($searchString: String!, $after: String) {
     search(query: $searchString, type: ISSUE, first: 50, after: $after) {
       edges {
@@ -131,7 +135,9 @@ async function mergedPrsSince(since, from) {
     }
   }`;
 
-  const searchString = `${from} is:merged merged:>=${since}`;
+  const timespan = until ? `${since}..${until}` : `>=${since}`;
+
+  const searchString = `${from} is:merged merged:${timespan}`;
   const headers = {
     authorization: `token ${process.env.GITHUB_TOKEN}`,
   };
