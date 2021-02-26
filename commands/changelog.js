@@ -2,7 +2,7 @@
 
 const chalk = require("chalk");
 const { graphql } = require("@octokit/graphql");
-const fs = require("fs-extra")
+const fs = require("fs-extra");
 
 /**
  * @typedef {Object} PullRequest
@@ -16,30 +16,44 @@ module.exports.command = "changelog";
 module.exports.describe = "Compile a raw changelog based on PR titles";
 
 module.exports.builder = (yargs) => {
-  yargs.option("out", {
+  yargs.example('$0 changlog --owner MovingBlocks --repo Terasology --pretty', 'Print the changelog since latest release for MovingBlocks/Terasology to the console')
+  .option("out", {
     alias: "o",
-    type: "string"
+    type: "string",
+    describe: "Write the changelog to the specified file"
   })
   .option("pretty", {
     describe: "Pretty print the output with colors and formatting",
     type: "boolean",
   })
   .option("since", {
-    describe: "The timestamp (ISO 8601) to start the changelog from",
+    describe: "The timestamp (ISO 8601) to start the changelog from. If both 'owner' and 'repo' are specified this will use the timestamp of the latest release.",
     type: "string"
+  })
+  .option("owner", {
+    describe: "The GitHub owner or organization",
+    type: "string"
+  })
+  .demandOption("owner", "Owner must be specified")
+  .option("repo", {
+    describe: "The GitHub repository - if omitted, collect from all repos of 'owner'",
+    type: "string"
+  })
+  .check((argv, options) => {
+    if (!argv.since && !argv.repo) {
+      throw new Error("At least one of 'since' and 'repo' must be specified");
+    } else {
+      return true
+    }
   })
 };
 
 module.exports.handler = async (argv) => {
-    const target = {
-      repo: "Terasology",
-      owner: "MovingBlocks",
-    }
-    const since = argv.since || await dateOfLastRelease(target);
+    // we check in the 'builder' above that either 'since' or both 'owner' and 'repo' are set
+    const since = argv.since || await dateOfLastRelease(argv.owner, argv.repo);
 
-    console.log(since);
-
-    const merged = await mergedPrsSince(since, target);
+    const from = argv.repo ? `repo:${argv.owner}/${argv.repo}` : `org:${argv.owner}`
+    const merged = await mergedPrsSince(since, from);
 
     const lines = merged.map(e => display(e.node, argv));
 
@@ -53,14 +67,20 @@ module.exports.handler = async (argv) => {
 };
 
 function display(node, options) {
-  if (options.pretty) {
-    return chalk`{bold ${node.title}} {blue #${node.number}} (@${node.author.login})`
+  let prRef;
+  if (options.owner && options.repo) {
+    prRef = `#${node.number}`
   } else {
-    return `${node.title} #${node.number} (@${node.author.login})`
+    prRef = `${node.repository.nameWithOwner}#${node.number}`
+  }
+  if (options.pretty) {
+    return chalk`{bold ${node.title}} {blue ${prRef}} (@${node.author.login})`
+  } else {
+    return `${node.title} ${prRef} (@${node.author.login})`
   }
 }
 
-async function dateOfLastRelease(target) {
+async function dateOfLastRelease(owner, repo) {
   const { repository } = await graphql(
     `
     query DateOfLatestRelease($repo: String!, $owner: String!) {
@@ -84,7 +104,7 @@ async function dateOfLastRelease(target) {
   return repository.releases.nodes[0].publishedAt;
 }
 
-async function mergedPrsSince(since, target) {
+async function mergedPrsSince(since, from) {
   const query = `query Changelog($searchString: String!, $after: String) {
     search(query: $searchString, type: ISSUE, first: 50, after: $after) {
       edges {
@@ -97,6 +117,10 @@ async function mergedPrsSince(since, target) {
                 login
               }
             }
+            repository {
+              name
+              nameWithOwner
+            }
           }
         }
       }
@@ -107,7 +131,7 @@ async function mergedPrsSince(since, target) {
     }
   }`;
 
-  const searchString = `repo:${target.owner}/${target.repo} is:merged merged:>=${since}`;
+  const searchString = `${from} is:merged merged:>=${since}`;
   const headers = {
     authorization: `token ${process.env.GITHUB_TOKEN}`,
   };
