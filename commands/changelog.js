@@ -16,7 +16,9 @@ module.exports.command = "changelog";
 module.exports.describe = "Compile a raw changelog based on PR titles";
 
 module.exports.builder = (yargs) => {
-  yargs.example('$0 changlog --owner MovingBlocks --repo Terasology --pretty', 'Print the changelog since latest release for MovingBlocks/Terasology to the console')
+  yargs
+  .example('$0 changlog --owner MovingBlocks --repo Terasology --pretty', 'Print the changelog since latest release for MovingBlocks/Terasology to the console')
+  .example('$0 changlog --owner Terasology --since="2021-02-01" --users', 'List all users that contributed to a Terasology module since Feb 1, 2021.')
   .option("out", {
     alias: "o",
     type: "string",
