@@ -71,7 +71,7 @@ module.exports.handler = async (argv) => {
     if (argv.users) {
       lines = [... new Set(merged.map(e => e.node.author.login))].sort().map(user => `@${user}`);
     } else {
-      const lines = merged.map(e => display(e.node, argv));
+      lines = merged.map(e => display(e.node, argv));
     }
 
     if (argv.out) {
