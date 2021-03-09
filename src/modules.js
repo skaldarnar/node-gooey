@@ -7,7 +7,36 @@ const { join, basename, relative, resolve } = require("path");
 const chalk = require("chalk");
 const execa = require("execa");
 
-function remoteStatus(ahead, behind) {
+/**
+ * @typedef {Object} RemoteStatus
+ * @member {number} ahead 
+ * @member {number} behind 
+ * @member {string} symbol
+ */
+
+/**
+ * 
+ * @param {string} dir 
+ * @param {boolean} fetch 
+ * @returns {Promise<RemoteStatus>}
+ */
+async function remoteStatus(dir, fetch) {
+  if (fetch) {
+    await git.fetch({fs, dir, http});
+  }
+
+  //TODO: be more clever about {upstream}
+  const ahead = await execa("git", ["-C", dir, "rev-list", "--count", "origin/develop..HEAD"]);
+  const behind = await execa("git", ["-C", dir, "rev-list", "--count", "HEAD..origin/develop"]);
+  
+  return {
+    ahead: parseInt(ahead.stdout),
+    behind: parseInt(behind.stdout),
+    symbol: remoteStatusSymbol(parseInt(ahead.stdout), parseInt(behind.stdout)),
+  }
+}
+
+function remoteStatusSymbol(ahead, behind) {
   if (ahead && behind) {
     return "±";
   }
@@ -24,21 +53,16 @@ async function status(dir, fetch) {
   const name = basename(dir).padEnd(32);
   const currentBranch = await git.currentBranch({fs, dir});
 
-  if (fetch) {
-    await git.fetch({fs, dir, http});
-  }
+  
 
   const status = await execa("git", ["-C", dir, "status", "--porcelain"]);
   const changedFiles = status.stdout.split("\n");
 
   const dirty = status.stdout != "";
 
-  const ahead = await execa("git", ["-C", dir, "rev-list", "--count", "origin/develop..HEAD"]);
-  const behind = await execa("git", ["-C", dir, "rev-list", "--count", "HEAD..origin/develop"]);
+  const remote = await remoteStatus(dir, fetch);  
 
-  const remote = remoteStatus(parseInt(ahead.stdout), parseInt(behind.stdout));
-
-  let msg = chalk`{dim module} ${name.padEnd(32)} ${remote.padStart(2)} `;
+  let msg = chalk`{dim module} ${name.padEnd(32)} ${remote.symbol.padStart(2)} `;
 
   if (dirty) {
     msg += chalk`{yellow ${currentBranch}}`;
@@ -75,17 +99,11 @@ async function reset(dir) {
  */
 async function update(dir) {
   const name = basename(dir).padEnd(32);
-  const branch = `[${await git.currentBranch({fs, dir})}]`.padStart(16);
+  const currentBranch = (await execa("git", ["-C", dir, "branch", "--show-current"])).stdout;
 
-  let msg = chalk`{dim module} ${name} ${branch}: `
+  let msg = chalk`{dim module} ${name} {cyan ${currentBranch}}: `
   try {
-    await git.fastForward({
-      fs,
-      http,
-      dir,
-      corsProxy: 'https://cors.isomorphic-git.org',
-    });
-    //await execa("git", ["-C", dir, "pull", "--ff-only"]);
+    await execa("git", ["-C", dir, "pull", "--ff-only"]);
     msg += chalk.green("up to date")
   } catch (err) {
     msg += chalk.red.bold(err.message);
@@ -113,7 +131,6 @@ async function listModules(workspace) {
 
   return modules;
 }
-
 
 module.exports = {
   listModules,
