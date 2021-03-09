@@ -7,8 +7,6 @@ const { join, basename, relative, resolve } = require("path");
 const chalk = require("chalk");
 const execa = require("execa")
 
-const { processInChunks } = require("./scheduler")
-
 async function status(dir) {
   const name = basename(dir).padEnd(32);
   const currentBranch = await git.currentBranch({fs, dir});
@@ -87,7 +85,8 @@ async function listModules(workspace) {
     (await fs.readdir(join(workspace, "modules"), {withFileTypes: true }))
       .filter(dir => dir.isDirectory())
       .map(dir => join(workspace, "modules", dir.name))
-      .filter(dir => isModule(dir));
+      .filter(dir => isModule(dir))
+      .sort();
 
   return modules;
 }

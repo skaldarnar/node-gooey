@@ -2,11 +2,11 @@
 
 const { listModules, update, reset, status } = require("../src/modules")
 const { findRoot } = require("../src/workspace")
-const { processInChunks } = require("../src/scheduler")
 const chalk = require("chalk")
 const { basename, join } = require("path")
 const fs = require("fs-extra");
 const ora = require('ora');
+const asyncPool = require("tiny-async-pool");
 
 module.exports.command = "modules";
 
@@ -22,7 +22,7 @@ module.exports.builder = (yargs) => {
         const spinner = ora('analyzing modules').start();
 
         const workspace = await findRoot(process.cwd());
-        const modules = (await listModules(workspace)).sort();
+        const modules = await listModules(workspace);
 
         const msgs = await Promise.all(modules.map(async m => await status(m)))
         spinner.stop();
@@ -32,15 +32,19 @@ module.exports.builder = (yargs) => {
     .command(
       "update",
       chalk`update all modules ({italic git pull})`,
-      (yargs) => {},
+      yargs => {},
       async (argv) => {
+        const spinner = ora('updating modules').start();
+
         const workspace = await findRoot(process.cwd());
         const modules = await listModules(workspace);
 
-        processInChunks(
-          modules.map(m => async () => update(m).then(console.log)),
-          { chunkSize: 10}
-        );
+        const task = async (module) => await update(module);
+        
+        const msgs = await asyncPool(16, modules, task)
+
+        spinner.stop();
+        console.log(msgs.join("\n"))
       }
     )
     .command(
@@ -48,17 +52,21 @@ module.exports.builder = (yargs) => {
       chalk`reset and update all modules ({italic git reset --hard})`,
       (yargs) => {},
       async (argv) => {
+        const spinner = ora('resetting modules').start();
+
         const workspace = await findRoot(process.cwd());
         const modules = await listModules(workspace);
 
-        processInChunks(
-          modules.map(m => async () => {
-            let resetMsg = await reset(m);
-            let updateMsg= await update(m)
-            console.log(resetMsg + "\n" + updateMsg)
-          }),
-          { chunkSize: 10}
-        );
+        const task = async (m) => {
+          let resetMsg = await reset(m);
+          let updateMsg= await update(m)
+          return resetMsg + "\n" + updateMsg;
+        };
+
+        const msgs = await asyncPool(16, modules, task)
+
+        spinner.stop();
+        console.log(msgs.join("\n"))
       }
     )
     .demandCommand()

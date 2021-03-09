@@ -26,6 +26,7 @@
     "isomorphic-git": "^1.4.0",
     "ora": "^5.3.0",
     "semver": "^7.3.2",
+    "tiny-async-pool": "^1.2.0",
     "yargs": "^15.3.1"
   }
 }
