@@ -17,14 +17,20 @@ module.exports.builder = (yargs) => {
     .command(
       "list",
       "list all local modules",
-      (yargs) => {},
+      {
+        fetch: {
+          type: "boolean",
+          describe: chalk`fetch remote state before showing state ({italic git fetch})`,
+          default: false,
+        }
+      },
       async (argv) => {
         const spinner = ora('analyzing modules').start();
 
         const workspace = await findRoot(process.cwd());
         const modules = await listModules(workspace);
 
-        const msgs = await Promise.all(modules.map(async m => await status(m)))
+        const msgs = await Promise.all(modules.map(async m => await status(m, argv.fetch)))
         spinner.stop();
         msgs.forEach(msg => console.log(msg));
       }

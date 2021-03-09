@@ -5,18 +5,40 @@ const git = require("isomorphic-git");
 const http = require("isomorphic-git/http/node")
 const { join, basename, relative, resolve } = require("path");
 const chalk = require("chalk");
-const execa = require("execa")
+const execa = require("execa");
 
-async function status(dir) {
+function remoteStatus(ahead, behind) {
+  if (ahead && behind) {
+    return "±";
+  }
+  if (ahead && !behind) {
+    return "+";
+  }
+  if (!ahead && behind) {
+    return "-";
+  }
+  return ""
+}
+
+async function status(dir, fetch) {
   const name = basename(dir).padEnd(32);
   const currentBranch = await git.currentBranch({fs, dir});
+
+  if (fetch) {
+    await git.fetch({fs, dir, http});
+  }
 
   const status = await execa("git", ["-C", dir, "status", "--porcelain"]);
   const changedFiles = status.stdout.split("\n");
 
   const dirty = status.stdout != "";
 
-  let msg = chalk`{dim module} ${name}`;
+  const ahead = await execa("git", ["-C", dir, "rev-list", "--count", "origin/develop..HEAD"]);
+  const behind = await execa("git", ["-C", dir, "rev-list", "--count", "HEAD..origin/develop"]);
+
+  const remote = remoteStatus(parseInt(ahead.stdout), parseInt(behind.stdout));
+
+  let msg = chalk`{dim module} ${name.padEnd(32)} ${remote.padStart(2)} `;
 
   if (dirty) {
     msg += chalk`{yellow ${currentBranch}}`;
@@ -63,6 +85,7 @@ async function update(dir) {
       dir,
       corsProxy: 'https://cors.isomorphic-git.org',
     });
+    //await execa("git", ["-C", dir, "pull", "--ff-only"]);
     msg += chalk.green("up to date")
   } catch (err) {
     msg += chalk.red.bold(err.message);
