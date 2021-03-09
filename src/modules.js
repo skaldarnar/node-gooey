@@ -5,8 +5,29 @@ const git = require("isomorphic-git");
 const http = require("isomorphic-git/http/node")
 const { join, basename, relative, resolve } = require("path");
 const chalk = require("chalk");
+const execa = require("execa")
 
 const { processInChunks } = require("./scheduler")
+
+async function status(dir) {
+  const name = basename(dir).padEnd(32);
+  const currentBranch = await git.currentBranch({fs, dir});
+
+  const status = await execa("git", ["-C", dir, "status", "--porcelain"]);
+  const changedFiles = status.stdout.split("\n");
+
+  const dirty = status.stdout != "";
+
+  let msg = chalk`{dim module} ${name}`;
+
+  if (dirty) {
+    msg += chalk`{yellow ${currentBranch}}`;
+    changedFiles.forEach(f => msg += `\n\t${f}`);
+  } else {
+    msg += chalk`{cyan ${currentBranch}}`;
+  }
+  return msg;
+}
 
 async function reset(dir) {
   const name = basename(dir).padEnd(32);
@@ -76,4 +97,5 @@ module.exports = {
   listModules,
   update,
   reset,
+  status,
 };

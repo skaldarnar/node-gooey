@@ -1,6 +1,6 @@
 //@ts-check
 
-const { listModules, update, reset, lockfile } = require("../src/modules")
+const { listModules, update, reset, status } = require("../src/modules")
 const { findRoot } = require("../src/workspace")
 const { processInChunks } = require("../src/scheduler")
 const chalk = require("chalk")
@@ -19,18 +19,10 @@ module.exports.builder = (yargs) => {
       (yargs) => {},
       async (argv) => {
         const workspace = await findRoot(process.cwd());
-        const modules = await listModules(workspace);
-        modules.forEach(m => console.log(chalk`{dim module} ${basename(m)}`));
-      }
-    )
-    .command(
-      "lock",
-      "write a lock-file to pin module versions (commits)",
-      (yargs) => {},
-      async (argv) => {
-        const workspace = await findRoot(process.cwd());
-        const lock = await lockfile(workspace);
-        await fs.writeJSON(join(workspace, "workspace-lock.json"), lock, {spaces: 2});
+        const modules = (await listModules(workspace)).sort();
+
+        const msgs = await Promise.all(modules.map(async m => await status(m)))
+        msgs.forEach(msg => console.log(msg));
       }
     )
     .command(
