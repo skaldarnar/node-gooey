@@ -6,6 +6,7 @@ const { processInChunks } = require("../src/scheduler")
 const chalk = require("chalk")
 const { basename, join } = require("path")
 const fs = require("fs-extra");
+const ora = require('ora');
 
 module.exports.command = "modules";
 
@@ -18,10 +19,13 @@ module.exports.builder = (yargs) => {
       "list all local modules",
       (yargs) => {},
       async (argv) => {
+        const spinner = ora('analyzing modules').start();
+
         const workspace = await findRoot(process.cwd());
         const modules = (await listModules(workspace)).sort();
 
         const msgs = await Promise.all(modules.map(async m => await status(m)))
+        spinner.stop();
         msgs.forEach(msg => console.log(msg));
       }
     )
