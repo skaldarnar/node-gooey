@@ -5,6 +5,7 @@ const { listModules } = require("./modules");
 const fs = require("fs-extra");
 const { join, resolve, relative } = require("path");
 const git = require("isomorphic-git");
+const execa = require("execa");
 
 /**
  * @typedef {Object} Options
@@ -18,14 +19,14 @@ const git = require("isomorphic-git");
  * @param {Options} options
  */
 async function getRef(dir, options) {
-  const refOptions = {
-    fs, dir, ref: "HEAD"
-  }
-
   if (!options.exact) {
-    refOptions.depth = 2;
+    // try to get the branch name, fall back to SHA
+    const currentBranch =  await execa("git", ["branch", "--show-current"], {cwd: dir});
+    if (currentBranch.stdout.trim() != "") {
+      return currentBranch.stdout;
+    }
   }
-  return git.resolveRef(refOptions);
+  return (await execa("git", ["rev-parse", "HEAD"], {cwd: dir})).stdout;
 }
 
 /**
