@@ -3,31 +3,15 @@
 const chalk = require("chalk");
 const { listModules } = require("./modules");
 const fs = require("fs-extra");
-const { join, resolve, relative } = require("path");
-const git = require("isomorphic-git");
-const execa = require("execa");
+const { join, resolve, relative, basename } = require("path");
+const { getRef } = require("./git");
 
 /**
  * @typedef {Object} Options
  * @property {boolean} exact - resolve commit SHA instead of symbolic reference
  */
 
-/**
- * Resolve the ref for the given repository, either to the commit SHA or the current branch.
- * 
- * @param {string} dir 
- * @param {Options} options
- */
-async function getRef(dir, options) {
-  if (!options.exact) {
-    // try to get the branch name, fall back to SHA
-    const currentBranch =  await execa("git", ["branch", "--show-current"], {cwd: dir});
-    if (currentBranch.stdout.trim() != "") {
-      return currentBranch.stdout;
-    }
-  }
-  return (await execa("git", ["rev-parse", "HEAD"], {cwd: dir})).stdout;
-}
+
 
 /**
  * 
@@ -37,7 +21,7 @@ async function getRef(dir, options) {
 async function moduleLock(workspace, options) {
   const modules = await listModules(workspace);
   const entries = await Promise.all(modules.map(async dir => {
-    const ref = await getRef(dir, options);
+    const ref = await getRef(dir, options.exact);
     const moduleInfo = JSON.parse(fs.readFileSync(resolve(dir, "module.txt"), 'utf8'));
 
     return {
@@ -92,5 +76,6 @@ async function lockfile(workspace, options) {
 }
 
 module.exports = {
+  getRef,
   lockfile,
 };

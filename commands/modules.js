@@ -1,10 +1,9 @@
 //@ts-check
 
-const { listModules, update, reset, status } = require("../src/modules")
-const { findRoot } = require("../src/workspace")
+const { listModules, update, reset } = require("../src/modules")
+const { findRoot } = require("../src/workspace");
+const { status } = require("../src/git");
 const chalk = require("chalk")
-const { basename, join } = require("path")
-const fs = require("fs-extra");
 const ora = require('ora');
 const asyncPool = require("tiny-async-pool");
 
@@ -38,7 +37,7 @@ module.exports.builder = (yargs) => {
     .command(
       "update",
       chalk`update all modules ({italic git pull})`,
-      yargs => {},
+      yargs => { },
       async (argv) => {
         const spinner = ora('updating modules').start();
 
@@ -46,7 +45,7 @@ module.exports.builder = (yargs) => {
         const modules = await listModules(workspace);
 
         const task = async (module) => await update(module);
-        
+
         const msgs = await asyncPool(16, modules, task)
 
         spinner.stop();
@@ -56,7 +55,7 @@ module.exports.builder = (yargs) => {
     .command(
       "reset",
       chalk`reset and update all modules ({italic git reset --hard})`,
-      (yargs) => {},
+      (yargs) => { },
       async (argv) => {
         const spinner = ora('resetting modules').start();
 
@@ -65,7 +64,7 @@ module.exports.builder = (yargs) => {
 
         const task = async (m) => {
           let resetMsg = await reset(m);
-          let updateMsg= await update(m)
+          let updateMsg = await update(m)
           return resetMsg + "\n" + updateMsg;
         };
 
@@ -79,4 +78,4 @@ module.exports.builder = (yargs) => {
     .help()
 };
 
-module.exports.handler = async (argv) => {};
+module.exports.handler = async (argv) => { };
