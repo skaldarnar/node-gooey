@@ -1,13 +1,12 @@
 //@ts-check
 
 const chalk = require("chalk");
-const { lockfile } = require("../../src/lockfile");
 const { findRoot } = require("../../src/workspace");
 const fs = require("fs-extra");
 const { join, basename } = require("path");
 const git = require("isomorphic-git");
-const { processInChunks } = require("../../src/scheduler");
-const { options } = require("yargs");
+const asyncPool = require("tiny-async-pool");
+const ora = require('ora');
 
 module.exports.command = "restore";
 
@@ -28,13 +27,21 @@ module.exports.builder = (yargs) => {
 };
 
 async function checkout(dir, ref, options) {
+  if (!fs.pathExistsSync(dir)) {
+    return chalk`{dim restore module} ${basename(dir).padEnd(32)} {yellow skipped} {dim (path does not exist: ${dir})}`
+    return;
+  }
+
   const current = await git.currentBranch({fs, dir});
   const sha = await git.resolveRef({fs, dir, ref: "HEAD"});
-  console.log(chalk`{dim restore module} ${basename(dir)}@{green ${ref.substring(0,8)}} {dim (was ${current}@${sha.substring(0,8)})}`);
   await git.checkout({fs, dir, ref, force: options.force});
+
+  return chalk`{dim restore module} ${basename(dir).padEnd(32)}@{green ${ref.padEnd(32)}} {dim (was ${current}@${sha})}`
 }
 
 module.exports.handler = async (argv) => {
+  const spinner = ora('restoring workspace').start();
+
   const root = await findRoot(process.cwd());
   const src = argv.lockfile || join(root, "workspace-lock.json");
 
@@ -43,10 +50,19 @@ module.exports.handler = async (argv) => {
   if (lock.lockfileVersion === 1) {
     await checkout(root, lock.ref, { force: argv.force});
 
-    const tasks = Object.entries(lock.modules).map(([modulePath, moduleInfo]) => {
-      return () => checkout(join(root, modulePath), moduleInfo.ref, { force: argv.force})
+    const modules = Object.entries(lock.modules).map(([modulePath, moduleInfo]) => {
+      return {
+        dir: join(root, modulePath),
+        ref: moduleInfo.ref,
+        options: { force: argv.force},
+      }
     })
 
-    await processInChunks(tasks, {chunkSize: 10})
-  }
+    const task = async ({dir, ref, options}) => await checkout(dir, ref, options);
+
+    const msgs = await asyncPool(1, modules, task);
+
+    spinner.succeed("Done!");
+    console.log(msgs.join("\n"));
+  } 
 };
