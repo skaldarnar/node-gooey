@@ -16,15 +16,15 @@ module.exports.builder = (yargs) => {
       description: "the lockfile for pinning/restoring a workspace",
       type: "string"
     })
-    .option("branch", {
-      description: "pin the branch instead of the commit SHA",
+    .option("exact", {
+      description: "pin the commit SHA instead of symbolic ref",
       type: "boolean"
     })
 };
 
 module.exports.handler = async (argv) => {
   const root = await findRoot(process.cwd());
-  const lock = await lockfile(root, {pinBranch: argv.branch});
+  const lock = await lockfile(root, {exact: argv.exact});
 
   const dest = argv.lockfile || join(root, "workspace-lock.json");
   console.log(chalk`{dim writing lock file to }${relative(process.cwd(), dest)}`);

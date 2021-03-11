@@ -8,7 +8,7 @@ const git = require("isomorphic-git");
 
 /**
  * @typedef {Object} Options
- * @property {boolean} pinBranch - safe the ref to the branch instead of the commit SHA
+ * @property {boolean} exact - resolve commit SHA instead of symbolic reference
  */
 
 /**
@@ -18,11 +18,14 @@ const git = require("isomorphic-git");
  * @param {Options} options
  */
 async function getRef(dir, options) {
-  const depth = options.pinBranch ? 2 : 1;
-  const ref = await git.resolveRef({
-    fs, dir, ref: "HEAD", depth
-  })
-  return ref;
+  const refOptions = {
+    fs, dir, ref: "HEAD"
+  }
+
+  if (!options.exact) {
+    refOptions.depth = 2;
+  }
+  return git.resolveRef(refOptions);
 }
 
 /**

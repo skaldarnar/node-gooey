@@ -41,10 +41,10 @@ module.exports.handler = async (argv) => {
   const lock = await fs.readJSON(src);
 
   if (lock.lockfileVersion === 1) {
-    await checkout(root, lock.sha, { force: argv.force});
+    await checkout(root, lock.ref, { force: argv.force});
 
     const tasks = Object.entries(lock.modules).map(([modulePath, moduleInfo]) => {
-      return () => checkout(join(root, modulePath), moduleInfo.sha, { force: argv.force})
+      return () => checkout(join(root, modulePath), moduleInfo.ref, { force: argv.force})
     })
 
     await processInChunks(tasks, {chunkSize: 10})
