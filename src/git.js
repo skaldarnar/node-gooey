@@ -21,38 +21,43 @@ async function getRef(dir, exact) {
     return branches.current;
 }
 
-function remoteStatusSymbol(ahead, behind) {
-    if (ahead && behind) {
-        return "±";
-    }
-    if (ahead && !behind) {
-        return "+";
-    }
-    if (!ahead && behind) {
-        return "-";
-    }
-    return ""
-}
-
 async function status(dir, fetch) {
-    const name = basename(dir).padEnd(32);
+    const _git = simpleGit({baseDir: dir});
     const currentBranch = await getRef(dir);
-    
-    git.cwd(dir);
+
     const status = await git.status();
 
-    let msg = chalk`{dim module} ${name.padEnd(32)} ${remoteStatusSymbol(status.ahead, status.behind).padStart(2)} `;
-
-    if (status.isClean()) {
-        msg += chalk`{cyan ${currentBranch}}`;
-    } else {
-        msg += chalk`{yellow ${currentBranch}}`;
-        status.files.forEach(f => msg += `\n\t${f.index}${f.working_dir} ${f.path}`);
+    return {
+        dir,
+        name: basename(dir),
+        ref: await _git.revparse("HEAD"),
+        status,
+        currentBranch,
     }
-    return msg;
+}
+
+async function update(dir) {
+    const _git = simpleGit({baseDir: dir});
+    const currentBranch = await getRef(dir, false);
+
+    const before = await _git.status();
+    before.ref = await _git.revparse("HEAD");
+    const summary = await _git.pull({'--ff-only': true});
+    const after = await _git.status();
+    after.ref = await _git.revparse("HEAD");
+
+    return {
+        dir,
+        name: basename(dir),
+        before,
+        after,
+        summary,
+        currentBranch
+    }
 }
 
 module.exports = {
     getRef,
     status,
+    update,
 }

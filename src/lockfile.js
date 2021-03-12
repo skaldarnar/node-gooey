@@ -1,7 +1,7 @@
 //@ts-check
 
 const chalk = require("chalk");
-const { listModules } = require("./modules");
+const { listModules } = require("./workspace");
 const fs = require("fs-extra");
 const { join, resolve, relative, basename } = require("path");
 const { getRef } = require("./git");
@@ -61,7 +61,7 @@ async function libLock(workspace, options) {
  */
 async function lockfile(workspace, options) {
   const engineInfo = JSON.parse(fs.readFileSync(join(workspace, "engine/src/main/resources/engine-module.txt"), "utf-8"));
-  const ref = await getRef(workspace, options);
+  const ref = await getRef(workspace, options.exact);
 
   let lock = {
     name: "Terasology",

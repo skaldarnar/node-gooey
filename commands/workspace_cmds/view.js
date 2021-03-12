@@ -2,14 +2,15 @@
 
 const chalk = require("chalk");
 const ora = require("ora");
+const { basename } = require("path");
+const asyncPool = require("tiny-async-pool");
+
 const { findRoot, listModules, listLibs } = require("../../src/workspace");
 const { status } = require("../../src/git");
 
 module.exports.command = "view [categories...]";
 
 module.exports.describe = "Inspect the workspace or a specific workspace element.";
-
-const categories = ["modules", "libs"]
 
 module.exports.builder = (yargs) => {
   return yargs
@@ -21,13 +22,6 @@ module.exports.builder = (yargs) => {
         default: false,
       }
     )
-    .positional(
-      "categories", {
-        describe: "the category of sub-repositories to work on.",
-        choices: categories,
-        default: categories,
-    }
-    )
     .help()
 };
 
@@ -38,26 +32,77 @@ module.exports.handler = async (argv) => {
 
   spinner.stop();
 
-  console.log(chalk`{dim workspace} ${workspace}`);
-  for (const element of argv.elements) {
-    console.log(chalk`{bold ${element}}`);
+  if (argv.categories.includes("root")) {
+    _rootMsg(workspace, await status(workspace, argv.fetch));
+  } else {
+    _rootMsg(workspace);
+  }
+  for (const element of argv.categories) {
     await _view(element, workspace, argv.fetch);
   }
 };
 
 
 async function _view(element, workspace, fetch) {
-  let msgs;
+  const task = async m => await status(m, fetch);
   switch (element) {
+    case "root":
+      break;
     case "modules":
+      console.log(chalk`{bold ${element}}`);
       const modules = await listModules(workspace);
-      msgs = await Promise.all(modules.map(async m => await status(m, fetch)))
-      msgs.forEach(msg => console.log("  " + msg));
+      (await asyncPool(16, modules, task))
+        .forEach(result => _statusMsg("module", result, "  "));
       break;
     case "libs":
+      console.log(chalk`{bold ${element}}`);
       const libs = await listLibs(workspace);
-      msgs = await Promise.all(libs.map(async m => await status(m, fetch)))
-      msgs.forEach(msg => console.log("  " + msg));
+      (await asyncPool(16, libs, task))
+        .forEach(result => _statusMsg("lib", result, "  "));
       break;
   }
+}
+
+function _remoteStatusSymbol(ahead, behind) {
+  if (ahead && behind) {
+      return "±";
+  }
+  if (ahead && !behind) {
+      return "+";
+  }
+  if (!ahead && behind) {
+      return "-";
+  }
+  return ""
+}
+
+function _statusMsg(category, info, indent) {
+  let msg = indent || "";
+  msg += chalk`{dim ${category.padStart(6)}} ${info.name.padEnd(32)}`;
+  msg += chalk`${_remoteStatusSymbol(info.status.ahead, info.status.behind).padStart(2)}`
+
+  if (info.status.isClean()) {
+      msg += chalk`{cyan ${info.currentBranch}}`;
+  } else {
+      msg += chalk`{yellow ${info.currentBranch}}`;
+      info.status.files.forEach(f => msg += `\n\t${f.index}${f.working_dir} ${f.path}`);
+  }
+
+  console.log(msg);
+}
+
+function _rootMsg(workspace, info) {
+  let msg = chalk`{dim workspace} {bold ${basename(workspace).padEnd(31)}}`
+
+  if (info) {
+    msg += chalk`${_remoteStatusSymbol(info.status.ahead, info.status.behind).padStart(2)}`
+    if (info.status.isClean()) {
+      msg += chalk`{cyan ${info.currentBranch}}`;
+    } else {
+      msg += chalk`{yellow ${info.currentBranch}}`;
+      info.status.files.forEach(f => msg += `\n\t${f.index}${f.working_dir} ${f.path}`);
+    }
+  }
+
+  console.log(msg);
 }

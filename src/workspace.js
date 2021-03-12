@@ -25,7 +25,6 @@ function isRoot(dir) {
       execa.sync("grep", ["rootProject.name = 'Terasology'", settings]);
       return true;
     } catch (err) {
-      console.error(err)
       return false;
     }
   }
