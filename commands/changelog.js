@@ -13,7 +13,7 @@ const fs = require("fs-extra");
 
 module.exports.command = "changelog";
 
-module.exports.describe = "Compile a raw changelog based on PR titles";
+module.exports.describe = "Compile a raw changelog based on PR titles (requires GITHUB_TOKEN env variable to be set)";
 
 module.exports.builder = (yargs) => {
   yargs

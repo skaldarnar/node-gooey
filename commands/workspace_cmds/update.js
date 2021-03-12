@@ -6,6 +6,8 @@ module.exports.command = "update [elements...]";
 
 module.exports.describe = "Update a workspace element";
 
+const elements = ["modules", "libs"]
+
 module.exports.builder = (yargs) => {
   return yargs
     .option(
@@ -27,6 +29,7 @@ module.exports.builder = (yargs) => {
       {
         description: "Only update the listed elements (module or lib)",
         type: "array",
+        choice: elements
       }
     )
     .help()

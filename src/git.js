@@ -40,7 +40,6 @@ async function status(dir, fetch) {
     
     git.cwd(dir);
     const status = await git.status();
-    console.log(dir+"\n"+JSON.stringify(status, null, 2));
 
     let msg = chalk`{dim module} ${name.padEnd(32)} ${remoteStatusSymbol(status.ahead, status.behind).padStart(2)} `;
 

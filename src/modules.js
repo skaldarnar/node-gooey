@@ -47,29 +47,7 @@ async function update(dir) {
   return msg;
 }
 
-/**
- * Predicate to synchronously check whether a given directory is a module based on the presence of `module.txt`.
- * @param {string} dir path to a directory
- */
-function isModule(dir) {
-  const moduleInfo = join(dir, "module.txt");
-  return fs.pathExistsSync(moduleInfo);
-}
-
-async function listModules(workspace) {
-  if (!workspace) return [];
-  const modules = 
-    (await fs.readdir(join(workspace, "modules"), {withFileTypes: true }))
-      .filter(dir => dir.isDirectory())
-      .map(dir => join(workspace, "modules", dir.name))
-      .filter(dir => isModule(dir))
-      .sort();
-
-  return modules;
-}
-
 module.exports = {
-  listModules,
   update,
   reset,
 };

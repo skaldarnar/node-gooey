@@ -1,7 +1,7 @@
 //@ts-check
 
-const { listModules, update, reset } = require("../src/modules")
-const { findRoot } = require("../src/workspace");
+const { update, reset } = require("../src/modules")
+const { findRoot, listModules } = require("../src/workspace");
 const { status } = require("../src/git");
 const chalk = require("chalk")
 const ora = require('ora');

@@ -32,7 +32,42 @@ function isRoot(dir) {
   return false;
 }
 
+/**
+ * Predicate to synchronously check whether a given directory is a module based on the presence of `module.txt`.
+ * @param {string} dir path to a directory
+ */
+ function isModule(dir) {
+  const moduleInfo = join(dir, "module.txt");
+  return fs.pathExistsSync(moduleInfo);
+}
+
+async function listModules(workspace) {
+  if (!workspace) return [];
+  const modules = 
+    (await fs.readdir(join(workspace, "modules"), {withFileTypes: true }))
+      .filter(dir => dir.isDirectory())
+      .map(dir => join(workspace, "modules", dir.name))
+      .filter(dir => isModule(dir))
+      .sort();
+
+  return modules;
+}
+
+
+async function listLibs(workspace) {
+  if (!workspace) return [];
+  const libs = 
+    (await fs.readdir(join(workspace, "libs"), {withFileTypes: true }))
+      .filter(dir => dir.isDirectory())
+      .map(dir => join(workspace, "libs", dir.name))
+      .sort();
+
+  return libs;
+}
+
 module.exports = {
+  listLibs,
+  listModules,
   findRoot,
   isRoot
 };
