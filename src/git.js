@@ -42,7 +42,14 @@ async function update(dir) {
 
     const before = await _git.status();
     before.ref = await _git.revparse("HEAD");
-    const summary = await _git.pull({'--ff-only': true});
+
+    let summary = {};
+    try {
+        summary = (await _git.pull({'--ff-only': true}));
+    } catch (e) {
+        summary.error = e;
+    }
+
     const after = await _git.status();
     after.ref = await _git.revparse("HEAD");
 

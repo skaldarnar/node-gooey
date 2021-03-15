@@ -70,7 +70,9 @@ function _updateMsg(category, result, indent) {
   let msg = indent || "";
   msg += chalk`{dim ${category.padStart(6)}} ${result.name.padEnd(32)}`
 
-  if (result.summary.summary.changes == 0) {
+  if (result.summary.error) {
+    msg += chalk.red(result.after.current)
+  } else if (result.summary.summary.changes == 0) {
     msg += chalk.cyan(result.after.current)
   } else {
     msg += chalk.bold.green(result.after.current.padEnd(24))
