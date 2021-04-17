@@ -1,6 +1,6 @@
 //@ts-check
 
-const { update, reset } = require("../src/modules")
+const { increment, updateDependency } = require("../src/modules")
 const { findRoot, listModules } = require("../src/workspace");
 const { status } = require("../src/git");
 const chalk = require("chalk")
@@ -11,7 +11,7 @@ module.exports.command = "module <m>";
 
 module.exports.describe = "Manage a module and its dependencies and dependants.";
 
-const semverLevel = ["major", "minor", "patch", "premajor", "preminor", "prepatch", "prerelease"]
+const semverLevel = ["major", "minor", "patch", "premajor", "preminor", "prepatch"]
 
 module.exports.builder = (yargs) => {
   yargs
@@ -23,27 +23,30 @@ module.exports.builder = (yargs) => {
       chalk`set the version for a specific module, and update all references ({italic module.txt})`,
       (yargs) => { 
         yargs.option("level", {
-          describe: `Increment a version by the specified level. Level can be one of: major, minor, patch, premajor, preminor, prepatch, or prerelease. Default level is 'minor'.`,
+          describe: `Increment a version by the specified level. Level can be one of: major, minor, patch, premajor, preminor, prepatch. Default level is 'minor'.`,
           choices: semverLevel,
           default: "minor",
         })
       },
       async (argv) => {
-        // const spinner = ora('resetting modules').start();
+        const workspace = await findRoot(process.cwd());
+        const modules = await listModules(workspace);
 
-        // const workspace = await findRoot(process.cwd());
-        // const modules = await listModules(workspace);
+        const targetModule = modules.find(el => el.endsWith(argv.m));
 
-        // const task = async (m) => {
-        //   let resetMsg = await reset(m);
-        //   let updateMsg = await update(m)
-        //   return resetMsg + "\n" + updateMsg;
-        // };
+        const result = await increment(targetModule, argv.level);
+        console.log(`Bumping version for '${argv.m}' from ${result.oldVersion} to ${result.newVersion}`);
 
-        // const msgs = await asyncPool(16, modules, task)
+        const task = async (m) => {
+              const info = await updateDependency(m, argv.m, result.newVersion);
+              if (info.newVersion) {
+                return `\t${info.id.padEnd(24)}: ${info.oldVersion} >>> ${info.newVersion}`;
+              }
+              return;
+        };
 
-        // spinner.stop();
-        console.log(`Bumping version for '${argv.m}'`);
+        const msgs = await asyncPool(16, modules, task)
+        console.log(msgs.filter(el => el).sort().join("\n"))
       }
     )
     .demandCommand()
