@@ -32,7 +32,7 @@ async function reset(dir) {
 
 const MODULE = "module.txt";
 
-async function increment(module, level) {
+async function increment(module, level, options) {
     const moduleInfoFile = join(module, MODULE);
     const moduleInfo = await fs.readJSON(moduleInfoFile);
 
@@ -43,8 +43,10 @@ async function increment(module, level) {
       moduleInfo.version = semver.inc(currentVersion, level);
     }
 
-    await fs.writeJSON(moduleInfoFile, moduleInfo, { spaces: 4 });
-    
+    if (!options.dryRun) {
+      await fs.writeJSON(moduleInfoFile, moduleInfo, { spaces: 4 });
+    }
+
     return {
       id: moduleInfo.id,
       oldVersion: currentVersion,
@@ -52,7 +54,7 @@ async function increment(module, level) {
     }
 }
 
-async function updateDependency(module, dependency, version) {
+async function updateDependency(module, dependency, version, options) {
     const moduleInfoFile = join(module, MODULE);
     const moduleInfo = await fs.readJSON(moduleInfoFile);
 
@@ -61,7 +63,9 @@ async function updateDependency(module, dependency, version) {
       const currentVersion = entry.minVersion;
       entry.minVersion = version
 
-      await fs.writeJSON(moduleInfoFile, moduleInfo, { spaces: 4 });
+      if (!options.dryRun) {
+        await fs.writeJSON(moduleInfoFile, moduleInfo, { spaces: 4 });
+      }
 
       return {
         id: moduleInfo.id,

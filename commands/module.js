@@ -6,6 +6,7 @@ const { status } = require("../src/git");
 const chalk = require("chalk")
 const ora = require('ora');
 const asyncPool = require("tiny-async-pool");
+const { options } = require("yargs");
 
 module.exports.command = "module <m>";
 
@@ -17,6 +18,11 @@ module.exports.builder = (yargs) => {
   yargs
     .positional("m", {
       describe: "the module to manage"
+    })
+    .option("dry-run", {
+      alias: "n",
+      describe: "perform a try run without any changes made",
+      type: "boolean"
     })
     .command(
       "bump <m>",
@@ -34,11 +40,11 @@ module.exports.builder = (yargs) => {
 
         const targetModule = modules.find(el => el.endsWith(argv.m));
 
-        const result = await increment(targetModule, argv.level);
+        const result = await increment(targetModule, argv.level, {dryRun: argv.dryRun});
         console.log(`Bumping version for '${argv.m}' from ${result.oldVersion} to ${result.newVersion}`);
 
         const task = async (m) => {
-              const info = await updateDependency(m, argv.m, result.newVersion);
+              const info = await updateDependency(m, argv.m, result.newVersion, {dryRun: argv.dryRun});
               if (info.newVersion) {
                 return `\t${info.id.padEnd(24)}: ${info.oldVersion} >>> ${info.newVersion}`;
               }
