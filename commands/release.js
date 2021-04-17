@@ -2,6 +2,8 @@ const git = require("isomorphic-git");
 const fs = require("fs-extra");
 const semver = require("semver");
 
+const io = require("../src/io");
+
 module.exports.command = "release";
 
 module.exports.describe = "Prepare and push a module release.";
@@ -32,10 +34,8 @@ module.exports.builder = (yargs) => {
     .help();
 };
 
-const MODULE = "module.txt";
-
 module.exports.handler = async (argv) => {
-  const moduleInfo = await fs.readJSON(MODULE);
+  const moduleInfo = await io.readModuleInfo(process.cwd());
 
   const currentVersion = moduleInfo.version;
 
@@ -74,8 +74,8 @@ function nextSnapshot(version) {
  * @param {string} message the commit message
  */
 async function writeAndCommit(moduleInfo, message) {
-  await fs.writeJSON(MODULE, moduleInfo, { spaces: 4 });
-  await git.add({ fs, dir: ".", filepath: MODULE });
+  const filepath = await io.writeModuleInfo(process.cwd(), moduleInfo);
+  await git.add({ fs, dir: ".", filepath});
   return git.commit({
     fs,
     dir: ".",
