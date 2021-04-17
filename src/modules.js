@@ -1,10 +1,10 @@
 //@ts-check
 
-//@ts-check
+const io = require("./io");
 const fs = require("fs-extra");
 const semver = require("semver");
 const git = require("isomorphic-git");
-const { join, basename } = require("path");
+const { basename } = require("path");
 const chalk = require("chalk");
 
 const simpleGit = require('simple-git');
@@ -30,11 +30,8 @@ async function reset(dir) {
   return msg;
 }
 
-const MODULE = "module.txt";
-
 async function increment(module, level, options) {
-    const moduleInfoFile = join(module, MODULE);
-    const moduleInfo = await fs.readJSON(moduleInfoFile);
+    const moduleInfo = await io.readModuleInfo(module);
 
     const currentVersion = moduleInfo.version;
     if (level.startsWith("pre")) {
@@ -44,7 +41,8 @@ async function increment(module, level, options) {
     }
 
     if (!options.dryRun) {
-      await fs.writeJSON(moduleInfoFile, moduleInfo, { spaces: 4 });
+      await io.writeModuleInfo(module, moduleInfo, options);
+      //await fs.writeJSON(moduleInfoFile, moduleInfo, { spaces: 4 });
     }
 
     return {
@@ -55,8 +53,7 @@ async function increment(module, level, options) {
 }
 
 async function updateDependency(module, dependency, version, options) {
-    const moduleInfoFile = join(module, MODULE);
-    const moduleInfo = await fs.readJSON(moduleInfoFile);
+    const moduleInfo = await io.readModuleInfo(module);
 
     const entry = moduleInfo.dependencies.find(el => el.id === dependency);
     if (entry) {
@@ -64,7 +61,7 @@ async function updateDependency(module, dependency, version, options) {
       entry.minVersion = version
 
       if (!options.dryRun) {
-        await fs.writeJSON(moduleInfoFile, moduleInfo, { spaces: 4 });
+        await io.writeModuleInfo(module, moduleInfo, { spaces: 4 });
       }
 
       return {
