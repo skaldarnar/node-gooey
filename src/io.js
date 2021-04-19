@@ -8,7 +8,7 @@ async function readModuleInfo(module) {
     return await fs.readJSON(moduleInfoFile);
 }
 
-async function writeModuleInfo(module, moduleInfo, options) {
+async function writeModuleInfo(module, moduleInfo, options={}) {
     const moduleInfoFile = join(module, MODULE);
 
     if (!options.dryRun) {

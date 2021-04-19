@@ -1,12 +1,16 @@
-const git = require("isomorphic-git");
-const fs = require("fs-extra");
+//@ts-check
+
 const semver = require("semver");
+const path = require("path")
+
+const simpleGit = require('simple-git');
+const git = simpleGit();
 
 const io = require("../src/io");
 
 module.exports.command = "release";
 
-module.exports.describe = "Prepare and push a module release.";
+module.exports.describe = "Prepare and tag a module release.";
 
 module.exports.builder = (yargs) => {
   yargs
@@ -25,12 +29,6 @@ module.exports.builder = (yargs) => {
       describe: "create an annotated tag for the release",
       default: false,
     })
-    .option("push", {
-      alias: "p",
-      type: "boolean",
-      describe: "push the release commits",
-      default: false,
-    })
     .help();
 };
 
@@ -41,10 +39,10 @@ module.exports.handler = async (argv) => {
 
   const releaseVersion = semver.inc(currentVersion, argv.scope);
   moduleInfo.version = releaseVersion;
-  const releaseSha = await writeAndCommit(moduleInfo, `Release version ${releaseVersion}`);
+  const commitInfo = await writeAndCommit(moduleInfo, `Release version ${releaseVersion}`);
 
   if (argv.tag) {
-    createReleaseTag({ version: releaseVersion, sha: releaseSha });
+    createReleaseTag({ version: releaseVersion, sha: commitInfo.commit });
   }
 
   const nextVersion = nextSnapshot(releaseVersion);
@@ -52,19 +50,19 @@ module.exports.handler = async (argv) => {
   await writeAndCommit(moduleInfo, `Prepare new SNAPSHOT version ${nextVersion}`);
 
   console.log(
-    `Successfully prepared release for ${releaseVersion} (${releaseSha.slice(0, 7)}) and bumped version to ${nextVersion}.`
+    `Successfully prepared release for ${releaseVersion} (${commitInfo.commit}) and bumped version to ${nextVersion}.`
   );
 };
 
 /**
  * Increments the given version to the next patch-level snapshot prerelease.
  * 
- * For instance, this increments `1.2.3` to `1.2.4-SNAPSHOT`.
+ * For instance, this increments `1.2.3` to `1.3.0-SNAPSHOT`.
  * 
  * @param {string} version the current (release) version to increment to next snapshot
  */
 function nextSnapshot(version) {
-  return semver.coerce(version, "prepatch").version + "-SNAPSHOT";
+  return semver.inc(version, "minor") + "-SNAPSHOT";
 }
 
 /**
@@ -74,13 +72,10 @@ function nextSnapshot(version) {
  * @param {string} message the commit message
  */
 async function writeAndCommit(moduleInfo, message) {
-  const filepath = await io.writeModuleInfo(process.cwd(), moduleInfo);
-  await git.add({ fs, dir: ".", filepath});
-  return git.commit({
-    fs,
-    dir: ".",
-    message,
-  });
+  const moduleInfoFile = await io.writeModuleInfo(process.cwd(), moduleInfo);
+  git.cwd(process.cwd());
+  await git.add(path.relative(process.cwd(), moduleInfoFile));
+  return await git.commit(message);
 }
 
 /**
@@ -90,11 +85,6 @@ async function writeAndCommit(moduleInfo, message) {
  * @param {string} release.sha the SHA of the release commit to annotate
  */
 async function createReleaseTag(release) {
-  await git.annotatedTag({
-    fs,
-    dir: ".",
-    ref: release.version,
-    object: release.sha,
-    message: `Release ${release.version}`,
-  });
+  git.cwd(process.cwd());
+  await git.addAnnotatedTag("v"+release.version, `Release ${release.version}`);
 }
