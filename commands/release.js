@@ -39,7 +39,7 @@ module.exports.handler = async (argv) => {
 
   const releaseVersion = semver.inc(currentVersion, argv.scope);
   moduleInfo.version = releaseVersion;
-  const commitInfo = await writeAndCommit(moduleInfo, `Release version ${releaseVersion}`);
+  const commitInfo = await writeAndCommit(moduleInfo, `release: version ${releaseVersion}`);
 
   if (argv.tag) {
     createReleaseTag({ version: releaseVersion, sha: commitInfo.commit });
@@ -47,11 +47,15 @@ module.exports.handler = async (argv) => {
 
   const nextVersion = nextSnapshot(releaseVersion);
   moduleInfo.version = nextVersion;
-  await writeAndCommit(moduleInfo, `Prepare new SNAPSHOT version ${nextVersion}`);
+  await writeAndCommit(moduleInfo, `chore: prepare snapshot builds for ${nextVersion}`);
 
   console.log(
     `Successfully prepared release for ${releaseVersion} (${commitInfo.commit}) and bumped version to ${nextVersion}.`
   );
+
+  console.log(
+    `git push origin ${commitInfo.commit}:develop && git push origin v${releaseVersion} && git push origin develop`
+  )
 };
 
 /**
