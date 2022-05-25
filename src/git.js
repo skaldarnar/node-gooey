@@ -43,15 +43,24 @@ async function update(dir, argv) {
     before.ref = await _git.revparse("HEAD");
 
     let summary = {};
-    try {
-        summary = (await _git.pull({'--ff-only': true, '--force': argv.force}));
-    } catch (e) {
-        summary.error = e;
+    if (argv.reset) {
+        summary = await _resetCmd(_git, argv);
+    } else {
+        summary = await _updateCmd(_git, argv);
     }
 
     const after = await _git.status();
     after.ref = await _git.revparse("HEAD");
 
+    if (!summary.summary) {
+        // Since we use a 'raw' command to reset to the default branch, there is no
+        // command summary available. To bridge this gap, we manually compute the 
+        // diff between the 'before' and 'after' states.
+        const diff = await _git.diff([before.ref, after.ref]);
+        summary.summary = diff;
+    }
+
+    //TODO: type definition for this return type
     return {
         dir,
         name: basename(dir),
@@ -59,6 +68,40 @@ async function update(dir, argv) {
         after,
         summary,
         currentBranch
+    }
+}
+
+async function _updateCmd(git, argv) {
+    let summary = {};
+    try {
+        let options = [
+            '--ff-only'
+        ];
+        if (argv.force) {
+            options.push('--force')
+        }
+        summary = (await git.pull(options));
+    } catch (e) {
+        summary.error = e;
+    }
+    return summary;
+}
+
+async function _resetCmd(git, argv) {
+    try {
+        let options = [
+            'switch',
+            '--discard-changes',
+            '--force-create',
+            'develop', //TODO: use actual default branch
+            'origin/develop'
+        ];
+        await git.raw(options);
+        return {};
+    } catch (e) {
+        return {
+            error: e
+        };
     }
 }
 

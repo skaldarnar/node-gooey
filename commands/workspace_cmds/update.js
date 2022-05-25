@@ -66,11 +66,15 @@ function _updateMsg(category, info, indent) {
   if (info.summary.error) {
     msg += chalk.bold.red(info.before.current)
     msg += "\n" + chalk.italic.red(info.summary.error.message.replace(/^/gm, indent + "  "))
-  } else if (info.summary.summary.changes == 0) {
-    msg += chalk.cyan(info.after.current)
-  } else {
+  } else if (_hasChanged(info)) {
     msg += chalk.bold.green(info.after.current.padEnd(24))
     msg += chalk.grey(info.before.ref.substring(0, 8) + "..." + info.after.ref.substring(0, 8));
+  } else {
+    msg += chalk.cyan(info.after.current)
   }
   console.log(msg);
+}
+
+function _hasChanged(info) {
+  return info.before.ref != info.after.ref || info.summary.summary.changes > 0;
 }
