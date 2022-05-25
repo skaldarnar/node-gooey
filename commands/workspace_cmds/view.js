@@ -32,11 +32,6 @@ module.exports.handler = async (argv) => {
 
   spinner.stop();
 
-  if (argv.categories.includes("root")) {
-    _rootMsg(workspace, await status(workspace, argv.fetch));
-  } else {
-    _rootMsg(workspace);
-  }
   for (const element of argv.categories) {
     await _view(element, workspace, argv.fetch);
   }
@@ -47,18 +42,25 @@ async function _view(element, workspace, fetch) {
   const task = async m => await status(m, fetch);
   switch (element) {
     case "root":
+      console.log(chalk.bold("workspace"));
+      const result = await task(workspace);
+      _statusMsg("root", result, "  ");
       break;
     case "modules":
-      console.log(chalk`{bold ${element}}`);
       const modules = await listModules(workspace);
-      (await asyncPool(16, modules, task))
-        .forEach(result => _statusMsg("module", result, "  "));
+      if (modules.length > 0) {
+        console.log(chalk`{bold ${element}}`);
+        (await asyncPool(16, modules, task))
+          .forEach(result => _statusMsg("module", result, "  "));
+      }
       break;
     case "libs":
-      console.log(chalk`{bold ${element}}`);
       const libs = await listLibs(workspace);
-      (await asyncPool(16, libs, task))
-        .forEach(result => _statusMsg("lib", result, "  "));
+      if (libs.length > 0) {
+        console.log(chalk`{bold ${element}}`);
+        (await asyncPool(16, libs, task))
+         .forEach(result => _statusMsg("lib", result, "  "));
+      }      
       break;
   }
 }
@@ -82,26 +84,11 @@ function _statusMsg(category, info, indent) {
   msg += chalk`${_remoteStatusSymbol(info.status.ahead, info.status.behind).padStart(2)}`
 
   if (info.status.isClean()) {
-      msg += chalk`{cyan ${info.currentBranch}}`;
+      msg += chalk`{cyan ${info.currentBranch.padEnd(24)}}`;
+      msg += chalk.grey(info.ref.substring(0, 8));
   } else {
       msg += chalk`{yellow ${info.currentBranch}}`;
       info.status.files.forEach(f => msg += `\n\t${f.index}${f.working_dir} ${f.path}`);
-  }
-
-  console.log(msg);
-}
-
-function _rootMsg(workspace, info) {
-  let msg = chalk`{dim workspace} {bold ${basename(workspace).padEnd(31)}}`
-
-  if (info) {
-    msg += chalk`${_remoteStatusSymbol(info.status.ahead, info.status.behind).padStart(2)}`
-    if (info.status.isClean()) {
-      msg += chalk`{cyan ${info.currentBranch}}`;
-    } else {
-      msg += chalk`{yellow ${info.currentBranch}}`;
-      info.status.files.forEach(f => msg += `\n\t${f.index}${f.working_dir} ${f.path}`);
-    }
   }
 
   console.log(msg);

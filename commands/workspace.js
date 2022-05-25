@@ -2,7 +2,7 @@
 
 const chalk = require("chalk");
 
-const categories = ["root", "modules", "libs"]
+const categories = ["root", "libs", "modules"]
 
 module.exports.command = "workspace";
 

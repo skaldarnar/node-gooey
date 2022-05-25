@@ -58,6 +58,7 @@ async function listLibs(workspace) {
   const libs = 
     (await fs.readdir(join(workspace, "libs"), {withFileTypes: true }))
       .filter(dir => dir.isDirectory())
+      .filter(dir => fs.existsSync(`${dir}/.git`))
       .map(dir => join(workspace, "libs", dir.name))
       .sort();
 

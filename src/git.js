@@ -24,7 +24,7 @@ async function status(dir, fetch) {
     const _git = simpleGit({baseDir: dir});
     const currentBranch = await getRef(dir);
 
-    const status = await git.status();
+    const status = await _git.status();
 
     return {
         dir,
