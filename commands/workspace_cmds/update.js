@@ -1,7 +1,6 @@
 //@ts-check
 
 const chalk = require("chalk");
-const { basename } = require("path");
 
 const { findRoot, listModules, listLibs } = require("../../src/workspace");
 const { update } = require("../../src/git");
@@ -66,33 +65,26 @@ async function _update(element, workspace) {
 
 function _updateMsg(category, result, indent) {
   //console.debug(JSON.stringify(result, null, 2));
-
-  let msg = indent || "";
-  msg += chalk`{dim ${category.padStart(6)}} ${result.name.padEnd(32)}`
-
-  if (result.summary.error) {
-    msg += chalk.red(result.after.current)
-  } else if (result.summary.summary.changes == 0) {
-    msg += chalk.cyan(result.after.current)
-  } else {
-    msg += chalk.bold.green(result.after.current.padEnd(24))
-    msg += chalk.grey(result.before.ref.substring(0, 8) + "..." + result.after.ref.substring(0, 8));
-  }
-
-  console.log(msg);
+  console.log(_msg(category, result, indent));
 }
 
 function _rootMsg(workspace, info) {
-  let msg = chalk`{dim workspace} {bold ${basename(workspace).padEnd(31)}}`
+  console.log(chalk.bold("workspace"))
+  console.log(_msg("root", info, "  "));
+}
 
-  if (info) {
-    if (info.summary.summary.changes == 0) {
-      msg += chalk.cyan(info.after.current)
-    } else {
-      msg += chalk.bold.green(info.after.current.padEnd(24))
-      msg += chalk.grey(info.before.ref.substring(0, 8) + "..." + info.after.ref.substring(0, 8));
-    }
+function _msg(category, info, indent) {
+  //console.debug(JSON.stringify(info, null, 2))
+  let msg = indent || "";
+  msg += chalk`{dim ${category.padStart(6)}} ${info.name.padEnd(32)}`
+  if (info.summary.error) {
+    msg += chalk.bold.red(info.before.current)
+    msg += "\n" + chalk.italic.red(info.summary.error.message.replace(/^/gm, indent + "  "))
+  } else if (info.summary.summary.changes == 0) {
+    msg += chalk.cyan(info.after.current)
+  } else {
+    msg += chalk.bold.green(info.after.current.padEnd(24))
+    msg += chalk.grey(info.before.ref.substring(0, 8) + "..." + info.after.ref.substring(0, 8));
   }
-
-  console.log(msg);
+  return msg;
 }

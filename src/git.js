@@ -1,10 +1,9 @@
 //@ts-check
 
 const { basename } = require("path");
-const chalk = require("chalk");
-const simpleGit = require('simple-git');
 
-const git = simpleGit();
+
+const simpleGit = require('simple-git');
 
 /**
  * Resolve the ref for the given repository, either to the commit SHA or the current branch.
@@ -13,10 +12,10 @@ const git = simpleGit();
  * @param {boolean} [exact]
  */
 async function getRef(dir, exact) {
-    git.cwd(dir);
-    const branches = await git.branch();
+    const _git = simpleGit({baseDir: dir, binary: 'git'});
+    const branches = await _git.branch();
     if (branches.detached || branches.current === "" || exact) {
-        return await git.revparse("HEAD");
+        return await _git.revparse("HEAD");
     }
     return branches.current;
 }
@@ -37,7 +36,7 @@ async function status(dir, fetch) {
 }
 
 async function update(dir) {
-    const _git = simpleGit({baseDir: dir});
+    const _git = simpleGit({baseDir: dir, binary: 'git'});
     const currentBranch = await getRef(dir, false);
 
     const before = await _git.status();
