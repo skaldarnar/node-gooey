@@ -32,22 +32,18 @@ module.exports.builder = (yargs) => {
 module.exports.handler = async (argv) => {
   const workspace = await findRoot(process.cwd());
 
-  if (argv.categories.includes("root")) {
-    _rootMsg(workspace, await update(workspace));
-  } else {
-    _rootMsg(workspace);
-  }
-
   for (const element of argv.categories) {
-    await _update(element, workspace);
+    await _update(element, workspace, argv);
   }
 };
 
-
-async function _update(element, workspace) {
-  const task = async m => await update(m);
+async function _update(element, workspace, argv) {
+  const task = async m => update(m, argv);
   switch (element) {
     case "root":
+      console.log(chalk.bold("workspace"));
+      const result = await task(workspace)
+      _updateMsg("root", result, "  ");
       break;
     case "modules":
       console.log(chalk`{bold ${element}}`);
@@ -63,17 +59,7 @@ async function _update(element, workspace) {
   }
 }
 
-function _updateMsg(category, result, indent) {
-  //console.debug(JSON.stringify(result, null, 2));
-  console.log(_msg(category, result, indent));
-}
-
-function _rootMsg(workspace, info) {
-  console.log(chalk.bold("workspace"))
-  console.log(_msg("root", info, "  "));
-}
-
-function _msg(category, info, indent) {
+function _updateMsg(category, info, indent) {
   //console.debug(JSON.stringify(info, null, 2))
   let msg = indent || "";
   msg += chalk`{dim ${category.padStart(6)}} ${info.name.padEnd(32)}`
@@ -86,5 +72,5 @@ function _msg(category, info, indent) {
     msg += chalk.bold.green(info.after.current.padEnd(24))
     msg += chalk.grey(info.before.ref.substring(0, 8) + "..." + info.after.ref.substring(0, 8));
   }
-  return msg;
+  console.log(msg);
 }

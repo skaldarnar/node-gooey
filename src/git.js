@@ -35,7 +35,7 @@ async function status(dir, fetch) {
     }
 }
 
-async function update(dir) {
+async function update(dir, argv) {
     const _git = simpleGit({baseDir: dir, binary: 'git'});
     const currentBranch = await getRef(dir, false);
 
@@ -44,7 +44,7 @@ async function update(dir) {
 
     let summary = {};
     try {
-        summary = (await _git.pull({'--ff-only': true}));
+        summary = (await _git.pull({'--ff-only': true, '--force': argv.force}));
     } catch (e) {
         summary.error = e;
     }
