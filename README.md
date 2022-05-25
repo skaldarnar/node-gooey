@@ -32,8 +32,10 @@ Commands:
   gooey clone [distro]           clone all modules of the given distribution
   gooey topics <org> [topics..]  add given topics to all repositories of the org
   gooey changelog                Compile a raw changelog based on PR titles
-  gooey modules                  Handle common operations on local modules.
-  gooey release                  Prepare and push a module release.
+                                 (requires GITHUB_TOKEN env variable to be set)
+  gooey module <m>               Manage a module and its dependencies and
+                                 dependants.
+  gooey release                  Prepare and tag a module release.
   gooey workspace                Manage a Terasology workspace
 
 Options:
@@ -43,7 +45,7 @@ Options:
 
 ### Workspace / Modules
 
-There a few commands to manage a Terasology workspace, e..g, to update (`git pull`) or reset (`git reset --hard ...`) all modules of the workspace.
+There a few commands to manage a Terasology workspace, e..g, to update (`git pull`) or reset (`git switch --discard-changes --force-create ...`) all modules of the workspace.
 This will run the respective `git` commands in parallel (full Omega workspace udpate in ~30 seconds).
 
 `gooey modules lock` will write a lockfile `workspace-lock.json` with the committishs for all modules currently checked out. This can, in the future, be used to share/sync workspaces.
