@@ -17,17 +17,18 @@
   },
   "homepage": "https://github.com/skaldarnar/node-gooey#readme",
   "dependencies": {
-    "@octokit/graphql": "^4.6.0",
+    "@octokit/core": "^3.6.0",
+    "@octokit/graphql": "^4.8.0",
     "@octokit/rest": "^17.11.2",
-    "chalk": "^4.1.0",
+    "chalk": "^4.1.2",
     "dot-properties": "^1.0.1",
     "execa": "^4.1.0",
     "fs-extra": "^9.0.0",
-    "isomorphic-git": "^1.8.2",
-    "ora": "^5.3.0",
-    "semver": "^7.3.2",
-    "simple-git": "^3.3.0",
-    "tiny-async-pool": "^1.2.0",
+    "isomorphic-git": "^1.17.2",
+    "ora": "^5.4.1",
+    "semver": "^7.3.7",
+    "simple-git": "^3.7.1",
+    "tiny-async-pool": "^1.3.0",
     "yargs": "^15.3.1"
   }
 }
