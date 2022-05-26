@@ -20,7 +20,7 @@ async function getRef(git, exact) {
 }
 
 async function status(dir, fetch) {
-    const _git = simpleGit({baseDir: dir, binary: 'git'});
+    const _git = simpleGit({ baseDir: dir, binary: 'git' });
     const currentBranch = await getRef(_git);
 
     if (fetch) {
@@ -40,9 +40,9 @@ async function status(dir, fetch) {
 }
 
 async function update(dir, argv) {
-    const _git = simpleGit({baseDir: dir, binary: 'git'});
+    const _git = simpleGit({ baseDir: dir, binary: 'git' });
     const currentBranch = await getRef(_git, false);
-    const before = await _status(_git);    
+    const before = await _status(_git);
 
     let summary = await _updateCmd(_git, argv);
 
@@ -60,9 +60,9 @@ async function update(dir, argv) {
 }
 
 async function reset(dir, argv) {
-    const _git = simpleGit({baseDir: dir, binary: 'git'});
+    const _git = simpleGit({ baseDir: dir, binary: 'git' });
     const currentBranch = await getRef(_git, false);
-    const before = await _status(_git);    
+    const before = await _status(_git);
     await _resetCmd(_git, argv);
     const after = await _status(_git);
 
@@ -72,6 +72,31 @@ async function reset(dir, argv) {
     const summary = {
         summary: await _git.diff([before.ref, after.ref])
     }
+
+    //TODO: type definition for this return type
+    return {
+        dir,
+        name: basename(dir),
+        before,
+        after,
+        summary,
+        currentBranch
+    }
+}
+
+async function checkout(dir, argv) {
+    const _git = simpleGit({ baseDir: dir, binary: 'git' });
+    const currentBranch = await getRef(_git, false);
+    const before = await _status(_git);
+    const summary = await _checkoutCommand(_git, argv);
+    const after = await _status(_git);
+
+    // Since we use a 'raw' command to reset to the default branch, there is no
+    // command summary available. To bridge this gap, we manually compute the 
+    // diff between the 'before' and 'after' states.
+    // const summary = {
+    //     summary: await _git.diff([before.ref, after.ref])
+    // }
 
     //TODO: type definition for this return type
     return {
@@ -107,11 +132,12 @@ async function _updateCmd(git, argv) {
 }
 
 async function _resetCmd(git, argv) {
+    if (argv.fetch) {
+        await git.fetch();
+    }
 
     const defaultBranch = "develop";
-
     const force = argv.force ? ['--discard-changes'] : []
-
     try {
         let options = [
             'switch',
@@ -129,9 +155,31 @@ async function _resetCmd(git, argv) {
     }
 }
 
+async function _checkoutCommand(git, argv) {
+    if (argv.fetch) {
+        await git.fetch();
+    }
+
+    const force = argv.force ? ['--discard-changes'] : []
+    try {
+        let options = [
+            'switch',
+            ...force,
+            argv.branch
+        ];
+        const result = await git.raw(options);
+        return result;
+    } catch (error) {        
+        return {
+            error
+        };
+    }
+}
+
 module.exports = {
     getRef,
     status,
     update,
     reset,
+    checkout,
 }
