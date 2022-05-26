@@ -50,14 +50,22 @@ This will run the respective `git` commands in parallel (full Omega workspace ud
 
 `gooey modules lock` will write a lockfile `workspace-lock.json` with the committishs for all modules currently checked out. This can, in the future, be used to share/sync workspaces.
 
-```
-  gooey modules list    list all local modules
-  gooey modules lock    write a lock-file to pin module versions (commits)
-  gooey modules update  update all modules (git pull)
-  gooey modules reset   reset and update all modules (git reset --hard)
-```
+```gooey workspace
 
-> :construction: TODO: generalize this to the whole workspace, i.e., also manage libs like NUI.
+Manage a Terasology workspace
+
+Commands:
+  gooey workspace pin                     Write a lock-file to pin module versions (workspace-lock.json)
+  gooey workspace reset [categories...]   Reset a workspace element to the latest state of the default upstream branch.
+  gooey workspace restore                 Restore a workspace from a workspace-lock.json lockfile
+  gooey workspace update [categories...]  Update a workspace element
+  gooey workspace view [categories...]    Inspect the workspace or a specific workspace element.
+
+
+Positionals:
+  categories  the categories of sub-repositories to work on. (default all)
+       [choices: "root", "libs", "modules"] [default: ["root","libs","modules"]
+```
 
 ### Changelog
 
