@@ -2,7 +2,6 @@
 
 const chalk = require("chalk");
 const ora = require("ora");
-const { basename } = require("path");
 const asyncPool = require("tiny-async-pool");
 
 const { findRoot, listModules, listLibs } = require("../../src/workspace");

@@ -3,15 +3,15 @@
 const chalk = require("chalk");
 const { listModules } = require("./workspace");
 const fs = require("fs-extra");
-const { join, resolve, relative, basename } = require("path");
+const { join, resolve, relative } = require("path");
 const { getRef } = require("./git");
+/** @type {import("simple-git").SimpleGitFactory} */
+const SimpleGit = require("simple-git");
 
 /**
  * @typedef {Object} Options
  * @property {boolean} exact - resolve commit SHA instead of symbolic reference
  */
-
-
 
 /**
  * 
@@ -21,7 +21,8 @@ const { getRef } = require("./git");
 async function moduleLock(workspace, options) {
   const modules = await listModules(workspace);
   const entries = await Promise.all(modules.map(async dir => {
-    const ref = await getRef(dir, options.exact);
+    const git = SimpleGit({binary: 'git', baseDir: dir});
+    const ref = await getRef(git, options.exact);
     const moduleInfo = JSON.parse(fs.readFileSync(resolve(dir, "module.txt"), 'utf8'));
 
     return {
@@ -60,8 +61,9 @@ async function libLock(workspace, options) {
  * @param {Options} options 
  */
 async function lockfile(workspace, options) {
-  const engineInfo = JSON.parse(fs.readFileSync(join(workspace, "engine/src/main/resources/engine-module.txt"), "utf-8"));
-  const ref = await getRef(workspace, options.exact);
+  const git = SimpleGit({baseDir: workspace, binary: 'git'});
+  const engineInfo = JSON.parse(fs.readFileSync(join(workspace, "engine/src/main/resources/org/terasology/engine/module.txt"), "utf-8"));
+  const ref = await getRef(git, options.exact);
 
   let lock = {
     name: "Terasology",
@@ -76,6 +78,5 @@ async function lockfile(workspace, options) {
 }
 
 module.exports = {
-  getRef,
   lockfile,
 };
