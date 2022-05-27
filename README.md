@@ -55,11 +55,12 @@ This will run the respective `git` commands in parallel (full Omega workspace ud
 Manage a Terasology workspace
 
 Commands:
-  gooey workspace pin                     Write a lock-file to pin module versions (workspace-lock.json)
-  gooey workspace reset [categories...]   Reset a workspace element to the latest state of the default upstream branch.
-  gooey workspace restore                 Restore a workspace from a workspace-lock.json lockfile
-  gooey workspace update [categories...]  Update a workspace element
-  gooey workspace view [categories...]    Inspect the workspace or a specific workspace element.
+  gooey workspace pin                               Write a lock-file to pin module versions (workspace-lock.json)
+  gooey workspace reset [categories...]             Reset a workspace element to the latest state of the default upstream branch.
+  gooey workspace restore                           Restore a workspace from a workspace-lock.json lockfile
+  gooey workspace switch <branch> [categories...]   Switch branches on workspace elements.
+  gooey workspace update [categories...]            Update a workspace element
+  gooey workspace view [categories...]              Inspect the workspace or a specific workspace element.
 
 
 Positionals:
