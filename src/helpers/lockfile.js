@@ -21,8 +21,7 @@ const SimpleGit = require("simple-git");
 async function moduleLock(workspace, options) {
   const modules = await listModules(workspace);
   const entries = await Promise.all(modules.map(async dir => {
-    const git = SimpleGit({binary: 'git', baseDir: dir});
-    const ref = await getRef(git, options.exact);
+    const ref = await getRef(dir, options.exact);
     const moduleInfo = JSON.parse(fs.readFileSync(resolve(dir, "module.txt"), 'utf8'));
 
     return {
@@ -61,9 +60,8 @@ async function libLock(workspace, options) {
  * @param {Options} options 
  */
 async function lockfile(workspace, options) {
-  const git = SimpleGit({baseDir: workspace, binary: 'git'});
   const engineInfo = JSON.parse(fs.readFileSync(join(workspace, "engine/src/main/resources/org/terasology/engine/module.txt"), "utf-8"));
-  const ref = await getRef(git, options.exact);
+  const ref = await getRef(workspace, options.exact);
 
   let lock = {
     name: "Terasology",

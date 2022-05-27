@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "CLI tool for working with Terasology workspaces",
   "bin": {
-    "gooey": "cli.js"
+    "gooey": "src/cli.js"
   },
   "scripts": {},
   "repository": {
@@ -24,7 +24,6 @@
     "dot-properties": "^1.0.1",
     "execa": "^4.1.0",
     "fs-extra": "^9.0.0",
-    "isomorphic-git": "^1.17.2",
     "ora": "^5.4.1",
     "semver": "^7.3.7",
     "simple-git": "^3.7.1",

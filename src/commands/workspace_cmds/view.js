@@ -4,8 +4,8 @@ const chalk = require("chalk");
 const ora = require("ora");
 const asyncPool = require("tiny-async-pool");
 
-const { findRoot, listModules, listLibs } = require("../../src/workspace");
-const { status } = require("../../src/git");
+const { findRoot, listModules, listLibs } = require("../../helpers/workspace");
+const { status } = require("../../helpers/git");
 
 module.exports.command = "view [categories...]";
 

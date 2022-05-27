@@ -1,17 +1,14 @@
 //@ts-check
 
 const chalk = require("chalk");
-
-const { findRoot, listModules, listLibs } = require("../../src/workspace");
-const { reset } = require("../../src/git");
 const asyncPool = require("tiny-async-pool");
 
-module.exports.command = "reset [categories...]";
+const { findRoot, listModules, listLibs } = require("../../helpers/workspace");
+const { update } = require("../../helpers/git");
 
-module.exports.describe = "Reset a workspace element to the latest state of the default upstream branch.";
+module.exports.command = "update [categories...]";
 
-//TODO: This is basically the same as 'update.js', but with a slightly different handler.
-//      Reduce code duplication by making these workspace commands parameterizable in the handler function.
+module.exports.describe = "Update a workspace element";
 
 module.exports.builder = (yargs) => {
   return yargs
@@ -29,12 +26,12 @@ module.exports.handler = async (argv) => {
   const workspace = await findRoot(process.cwd());
 
   for (const element of argv.categories) {
-    await _reset(element, workspace, argv);
+    await _update(element, workspace, argv);
   }
 };
 
-async function _reset(element, workspace, argv) {
-  const task = async m => reset(m, argv);
+async function _update(element, workspace, argv) {
+  const task = async m => update(m, argv);
   switch (element) {
     case "root":
       console.log(chalk.bold("workspace"));

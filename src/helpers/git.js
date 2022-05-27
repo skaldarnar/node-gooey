@@ -10,18 +10,30 @@ const simpleGit = require('simple-git');
  * 
  * @param {import("simple-git").SimpleGit} git
  * @param {boolean} [exact]
+ * @returns string
  */
-async function getRef(git, exact) {
+async function _getRef(git, exact) {
     const branches = await git.branch();
     if (branches.detached || branches.current === "" || exact) {
         return await git.revparse("HEAD");
     }
     return branches.current;
 }
+/**
+ * Resolve the ref for the given repository, either to the commit SHA or the current branch.
+ * 
+ * @param {string} dir 
+ * @param {boolean} [exact] 
+ * @returns string
+ */
+async function getRef(dir, exact) {
+    const git = simpleGit(dir, {binary: 'git'});
+    return await _getRef(git, exact);
+}
 
 async function status(dir, fetch) {
     const _git = simpleGit({ baseDir: dir, binary: 'git' });
-    const currentBranch = await getRef(_git);
+    const currentBranch = await _getRef(_git);
 
     if (fetch) {
         await _git.fetch();
@@ -41,7 +53,7 @@ async function status(dir, fetch) {
 
 async function update(dir, argv) {
     const _git = simpleGit({ baseDir: dir, binary: 'git' });
-    const currentBranch = await getRef(_git, false);
+    const currentBranch = await _getRef(_git, false);
     const before = await _status(_git);
 
     let summary = await _updateCmd(_git, argv);
@@ -61,7 +73,7 @@ async function update(dir, argv) {
 
 async function reset(dir, argv) {
     const _git = simpleGit({ baseDir: dir, binary: 'git' });
-    const currentBranch = await getRef(_git, false);
+    const currentBranch = await _getRef(_git, false);
     const before = await _status(_git);
     await _resetCmd(_git, argv);
     const after = await _status(_git);
@@ -83,10 +95,15 @@ async function reset(dir, argv) {
         currentBranch
     }
 }
-
+/**
+ * 
+ * @param {string} dir 
+ * @param {{force: boolean, branch: string, fetch: boolean}} argv 
+ * @returns 
+ */
 async function checkout(dir, argv) {
     const _git = simpleGit({ baseDir: dir, binary: 'git' });
-    const currentBranch = await getRef(_git, false);
+    const currentBranch = await _getRef(_git, false);
     const before = await _status(_git);
     const summary = await _checkoutCommand(_git, argv);
     const after = await _status(_git);
@@ -155,6 +172,12 @@ async function _resetCmd(git, argv) {
     }
 }
 
+/**
+ * 
+ * @param {import("simple-git").SimpleGit} git 
+ * @param {{force: boolean, branch: string, fetch: boolean}} argv 
+ * @returns 
+ */
 async function _checkoutCommand(git, argv) {
     if (argv.fetch) {
         await git.fetch();

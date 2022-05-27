@@ -6,7 +6,7 @@ const path = require("path")
 const simpleGit = require('simple-git');
 const git = simpleGit();
 
-const io = require("../src/io");
+const io = require("../helpers/io");
 
 module.exports.command = "release";
 

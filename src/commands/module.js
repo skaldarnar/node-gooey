@@ -1,12 +1,10 @@
 //@ts-check
 
-const { increment, updateDependency } = require("../src/modules")
-const { findRoot, listModules } = require("../src/workspace");
-const { status } = require("../src/git");
+const { increment, updateDependency } = require("../helpers/modules")
+const { findRoot, listModules } = require("../helpers/workspace");
+
 const chalk = require("chalk")
-const ora = require('ora');
 const asyncPool = require("tiny-async-pool");
-const { options } = require("yargs");
 
 module.exports.command = "module <m>";
 

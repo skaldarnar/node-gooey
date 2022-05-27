@@ -1,10 +1,9 @@
 //@ts-check
+const { findRoot, listModules, listLibs } = require("../../helpers/workspace");
+const { checkout } = require("../../helpers/git");
 
 const chalk = require("chalk");
-
-const { findRoot, listModules, listLibs } = require("../../src/workspace");
 const asyncPool = require("tiny-async-pool");
-const { checkout } = require("../../src/git");
 
 module.exports.command = "switch <branch> [categories...]";
 

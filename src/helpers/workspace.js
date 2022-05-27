@@ -1,14 +1,16 @@
 //@ts-check
 
 const fs = require("fs-extra");
-const git = require("isomorphic-git");
+const { getRef } = require("../helpers/git")
 const { join, resolve } = require("path");
 const chalk = require("chalk");
-const execa = require("execa")
+const execa = require("execa");
+const { default: simpleGit } = require("simple-git");
 
 async function findRoot(dir) {
+  const git = simpleGit(dir, {binary: 'git'});
   try {
-    const root = await git.findRoot({fs, filepath: dir });
+    const root = await git.revparse("--show-toplevel");
     if (isRoot(root)) {
       return root;
     }

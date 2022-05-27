@@ -1,8 +1,8 @@
 //@ts-check
 
 const chalk = require("chalk");
-const { lockfile } = require("../../src/lockfile");
-const { findRoot } = require("../../src/workspace");
+const { lockfile } = require("../../helpers/lockfile");
+const { findRoot } = require("../../helpers/workspace");
 const fs = require("fs-extra");
 const {join, relative} = require("path");
 

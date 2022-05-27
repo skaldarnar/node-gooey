@@ -1,12 +1,14 @@
 //@ts-check
 
+const { findRoot } = require("../../helpers/workspace");
+const { checkout: checkoutBranch } = require("../../helpers/git");
+
 const chalk = require("chalk");
-const { findRoot } = require("../../src/workspace");
 const fs = require("fs-extra");
 const { join, basename } = require("path");
-const git = require("isomorphic-git");
 const asyncPool = require("tiny-async-pool");
 const ora = require('ora');
+const { Stream } = require("stream");
 
 module.exports.command = "restore";
 
@@ -29,14 +31,11 @@ module.exports.builder = (yargs) => {
 async function checkout(dir, ref, options) {
   if (!fs.pathExistsSync(dir)) {
     return chalk`{dim restore module} ${basename(dir).padEnd(32)} {yellow skipped} {dim (path does not exist: ${dir})}`
-    return;
   }
 
-  const current = await git.currentBranch({fs, dir});
-  const sha = await git.resolveRef({fs, dir, ref: "HEAD"});
-  await git.checkout({fs, dir, ref, force: options.force});
+  const result = await checkoutBranch(dir, {fetch: true, branch: ref, force: options.force});
 
-  return chalk`{dim restore module} ${basename(dir).padEnd(32)}@{green ${ref.padEnd(32)}} {dim (was ${current}@${sha})}`
+  return chalk`{dim restore module} ${basename(dir).padEnd(32)}@{green ${ref.padEnd(32)}} {dim (was ${result.before.current}@${result.before.ref.substring(0, 8)})}`
 }
 
 module.exports.handler = async (argv) => {
@@ -47,22 +46,29 @@ module.exports.handler = async (argv) => {
 
   const lock = await fs.readJSON(src);
 
-  if (lock.lockfileVersion === 1) {
-    await checkout(root, lock.ref, { force: argv.force});
+  //console.debug(JSON.stringify(lock, null, 2));
 
-    const modules = Object.entries(lock.modules).map(([modulePath, moduleInfo]) => {
-      return {
-        dir: join(root, modulePath),
-        ref: moduleInfo.ref,
-        options: { force: argv.force},
-      }
-    })
+  const rootMsg = await checkout(root, lock.ref, { force: argv.force});
+  spinner.succeed(rootMsg);
 
-    const task = async ({dir, ref, options}) => await checkout(dir, ref, options);
+  const modules = Object.entries(lock.modules).map(([modulePath, moduleInfo]) => {
+    return {
+      dir: join(root, modulePath),
+      ref: moduleInfo.ref,
+      options: { force: argv.force},
+    }
+  });
 
-    const msgs = await asyncPool(1, modules, task);
+  //console.debug(JSON.stringify(modules, null, 2));
 
-    spinner.succeed("Done!");
-    console.log(msgs.join("\n"));
-  } 
+  const task = async ({dir, ref, options}) => {
+    const s = ora().start();
+    const result = await checkout(dir, ref, options);
+    s.succeed(result);
+    return result;
+  }
+
+  await asyncPool(8, modules, task);
+  
+  spinner.succeed("Done!");
 };
