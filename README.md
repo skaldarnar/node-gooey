@@ -2,7 +2,7 @@
 
 A CLI tool for managing Terasology workspaces.
 
-## Install
+# Install
 
 Clone this repo and run
 
@@ -13,100 +13,492 @@ npm link
 
 You can make use of `gooey` on the command line.
 
-> :construction: TODO: provide this as package so that it can be easily isntalled via `npm install -g gooey-cli`
+> :construction: TODO: provide this as package so that it can be easily isntalled via `npm install -g gooey`
 
-## Usage
+# Usage
 
 > :warning: Use all features of this little tool at own risk!
 
-The `gooey` CLI tool provides several sub-commands (of varying maturity).
-It expects the `GITHUB_TOKEN` environment variable to hold a valid access token (see [Creating a personal access token](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) for more information).
-Run `gooey --help` to get a brief overview.
+<!-- usage -->
+```sh-session
+$ npm install -g gooey
+$ gooey COMMAND
+running command...
+$ gooey (--version)
+gooey/0.2.0 linux-x64 node-v14.16.0
+$ gooey --help [COMMAND]
+USAGE
+  $ gooey COMMAND
+...
+```
+<!-- usagestop -->
 
+# Commands
+
+<!-- commands -->
+* [`gooey distro`](#gooey-distro)
+* [`gooey distro clone [DISTRO]`](#gooey-distro-clone-distro)
+* [`gooey distro list`](#gooey-distro-list)
+* [`gooey help [COMMAND]`](#gooey-help-command)
+* [`gooey module`](#gooey-module)
+* [`gooey module bump [MODULE]`](#gooey-module-bump-module)
+* [`gooey module release [MODULE]`](#gooey-module-release-module)
+* [`gooey plugins`](#gooey-plugins)
+* [`gooey plugins:install PLUGIN...`](#gooey-pluginsinstall-plugin)
+* [`gooey plugins:inspect PLUGIN...`](#gooey-pluginsinspect-plugin)
+* [`gooey plugins:install PLUGIN...`](#gooey-pluginsinstall-plugin-1)
+* [`gooey plugins:link PLUGIN`](#gooey-pluginslink-plugin)
+* [`gooey plugins:uninstall PLUGIN...`](#gooey-pluginsuninstall-plugin)
+* [`gooey plugins:uninstall PLUGIN...`](#gooey-pluginsuninstall-plugin-1)
+* [`gooey plugins:uninstall PLUGIN...`](#gooey-pluginsuninstall-plugin-2)
+* [`gooey plugins update`](#gooey-plugins-update)
+* [`gooey workspace [CATEGORIES]`](#gooey-workspace-categories)
+* [`gooey workspace load`](#gooey-workspace-load)
+* [`gooey workspace pin`](#gooey-workspace-pin)
+* [`gooey workspace status [CATEGORIES]`](#gooey-workspace-status-categories)
+
+## `gooey distro`
+
+View and clone different module distributions.
 
 ```
-gooey <command>
+USAGE
+  $ gooey distro
 
-Commands:
-  gooey distro                   list available distributions
-  gooey clone [distro]           clone all modules of the given distribution
-  gooey topics <org> [topics..]  add given topics to all repositories of the org
-  gooey changelog                Compile a raw changelog based on PR titles
-                                 (requires GITHUB_TOKEN env variable to be set)
-  gooey module <m>               Manage a module and its dependencies and
-                                 dependants.
-  gooey release                  Prepare and tag a module release.
-  gooey workspace                Manage a Terasology workspace
-
-Options:
-  --version  Show version number                                       [boolean]
-  --help     Show help                                                 [boolean]
+DESCRIPTION
+  View and clone different module distributions.
 ```
 
-### Workspace / Modules
+_See code: [dist/commands/distro/index.ts](https://github.com/skaldarnar/node-gooey/blob/v0.2.0/dist/commands/distro/index.ts)_
 
-There a few commands to manage a Terasology workspace, e..g, to update (`git pull`) or reset (`git switch --discard-changes --force-create ...`) all modules of the workspace.
-This will run the respective `git` commands in parallel (full Omega workspace udpate in ~30 seconds).
+## `gooey distro clone [DISTRO]`
 
-`gooey modules lock` will write a lockfile `workspace-lock.json` with the committishs for all modules currently checked out. This can, in the future, be used to share/sync workspaces.
-
-```gooey workspace
-
-Manage a Terasology workspace
-
-Commands:
-  gooey workspace pin                               Write a lock-file to pin module versions (workspace-lock.json)
-  gooey workspace reset [categories...]             Reset a workspace element to the latest state of the default upstream branch.
-  gooey workspace restore                           Restore a workspace from a workspace-lock.json lockfile
-  gooey workspace switch <branch> [categories...]   Switch branches on workspace elements.
-  gooey workspace update [categories...]            Update a workspace element
-  gooey workspace view [categories...]              Inspect the workspace or a specific workspace element.
-
-
-Positionals:
-  categories  the categories of sub-repositories to work on. (default all)
-       [choices: "root", "libs", "modules"] [default: ["root","libs","modules"]
-```
-
-### Changelog
-
-The `changelog` command allows to assemble a list of changes in the form of **merged pull requests**. 
-It can either target a specific repository by providing both `--owner` and `--repo` or all repositories of an owner by just providing `--owner`.
-The output can directly be written to file (`--out`) or pretty-printend to the console (`--pretty`).+
-
-#### Examples
-
-Print the changelog since latest release for MovingBlocks/Terasology to the console.
-```
-  gooey changlog --owner MovingBlocks --repo Terasology --pretty                
-```
-
-List all users that contributed to a Terasology module since Feb 1, 2021.
-```
-  gooey changlog --owner Terasology --since="2021-02-01" --users              
-```
-
-For more information run `gooey changelog help`:
+Clone all modules of the given distribution to the local workspace.
 
 ```
-gooey changelog
+USAGE
+  $ gooey distro clone [DISTRO]
 
-Compile a raw changelog based on PR titles
+ARGUMENTS
+  DISTRO  [default: iota] The distribution to clone. Default is 'iota', the minimal reasonable module set.
 
-Options:
-  --version               Show version number                          [boolean]
-  --help                  Show help                                    [boolean]
-  --out, -o               Write the changelog to the specified file     [string]
-  --pretty                Pretty print the output with colors and formatting
-                                                                       [boolean]
-  --since                 The timestamp (ISO 8601) to start the changelog from.
-                          If both 'owner' and 'repo' are specified this will use
-                          the timestamp of the latest release.          [string]
-  --until                 The timestamp (ISO 8601) until when the changelog
-                          should be computed. Current date if omitted.  [string]
-  --owner                 The GitHub owner or organization   [string] [required]
-  --repo                  The GitHub repository - if omitted, collect from all
-                          repos of 'owner'                              [string]
-  --users, --contribtors  List all users that contributed to the changeset
-                                                                       [boolean]
+DESCRIPTION
+  Clone all modules of the given distribution to the local workspace.
 ```
+
+## `gooey distro list`
+
+List available module distribution sets.
+
+```
+USAGE
+  $ gooey distro list
+```
+
+## `gooey help [COMMAND]`
+
+Display help for gooey.
+
+```
+USAGE
+  $ gooey help [COMMAND] [-n]
+
+ARGUMENTS
+  COMMAND  Command to show help for.
+
+FLAGS
+  -n, --nested-commands  Include all nested commands in the output.
+
+DESCRIPTION
+  Display help for gooey.
+```
+
+_See code: [@oclif/plugin-help](https://github.com/oclif/plugin-help/blob/v5.1.12/src/commands/help.ts)_
+
+## `gooey module`
+
+Manage a module and its dependencies and dependants.
+
+```
+USAGE
+  $ gooey module
+
+DESCRIPTION
+  Manage a module and its dependencies and dependants.
+```
+
+_See code: [dist/commands/module/index.ts](https://github.com/skaldarnar/node-gooey/blob/v0.2.0/dist/commands/module/index.ts)_
+
+## `gooey module bump [MODULE]`
+
+Bump the version for a specific module, and update all references ([3mmodule.txt[23m)
+
+```
+USAGE
+  $ gooey module bump [MODULE] [-n] [-s major|minor|patch|premajor|preminor|prepatch]
+
+ARGUMENTS
+  MODULE  The module to increment the version on.
+
+FLAGS
+  -n, --dry-run         Perform a dry run without any changes made.
+  -s, --scope=<option>  [default: minor] Increment a version by the specified level.
+                        <options: major|minor|patch|premajor|preminor|prepatch>
+
+DESCRIPTION
+  Bump the version for a specific module, and update all references (module.txt)
+
+EXAMPLES
+  $ gooey-cli module:bump
+```
+
+## `gooey module release [MODULE]`
+
+Prepare and tag a module release.
+
+```
+USAGE
+  $ gooey module release [MODULE] [-t] [-s major|premajor|minor]
+
+ARGUMENTS
+  MODULE  The module to prepare a release for.
+
+FLAGS
+  -s, --scope=<option>  [default: minor] Semver scope to make the release for.
+                        <options: major|premajor|minor>
+  -t, --tag             Create an annotated tag for the release.
+
+DESCRIPTION
+  Prepare and tag a module release.
+
+  This is an automation for the module release process as described in
+
+  	https://github.com/MovingBlocks/Terasology/wiki/Release%3A-Modules
+
+EXAMPLES
+  $ gooey-cli module:release --tag --scope major Health
+      Prepare a new major release for the 'Health' module and tag it.
+
+  $ gooey-cli module:release --scope minor
+      Prepapre a minor release without tag for the module this command is run from.
+```
+
+## `gooey plugins`
+
+List installed plugins.
+
+```
+USAGE
+  $ gooey plugins [--core]
+
+FLAGS
+  --core  Show core plugins.
+
+DESCRIPTION
+  List installed plugins.
+
+EXAMPLES
+  $ gooey plugins
+```
+
+_See code: [@oclif/plugin-plugins](https://github.com/oclif/plugin-plugins/blob/v2.1.0/src/commands/plugins/index.ts)_
+
+## `gooey plugins:install PLUGIN...`
+
+Installs a plugin into the CLI.
+
+```
+USAGE
+  $ gooey plugins:install PLUGIN...
+
+ARGUMENTS
+  PLUGIN  Plugin to install.
+
+FLAGS
+  -f, --force    Run yarn install with force flag.
+  -h, --help     Show CLI help.
+  -v, --verbose
+
+DESCRIPTION
+  Installs a plugin into the CLI.
+
+  Can be installed from npm or a git url.
+
+  Installation of a user-installed plugin will override a core plugin.
+
+  e.g. If you have a core plugin that has a 'hello' command, installing a user-installed plugin with a 'hello' command
+  will override the core plugin implementation. This is useful if a user needs to update core plugin functionality in
+  the CLI without the need to patch and update the whole CLI.
+
+ALIASES
+  $ gooey plugins add
+
+EXAMPLES
+  $ gooey plugins:install myplugin 
+
+  $ gooey plugins:install https://github.com/someuser/someplugin
+
+  $ gooey plugins:install someuser/someplugin
+```
+
+## `gooey plugins:inspect PLUGIN...`
+
+Displays installation properties of a plugin.
+
+```
+USAGE
+  $ gooey plugins:inspect PLUGIN...
+
+ARGUMENTS
+  PLUGIN  [default: .] Plugin to inspect.
+
+FLAGS
+  -h, --help     Show CLI help.
+  -v, --verbose
+
+DESCRIPTION
+  Displays installation properties of a plugin.
+
+EXAMPLES
+  $ gooey plugins:inspect myplugin
+```
+
+## `gooey plugins:install PLUGIN...`
+
+Installs a plugin into the CLI.
+
+```
+USAGE
+  $ gooey plugins:install PLUGIN...
+
+ARGUMENTS
+  PLUGIN  Plugin to install.
+
+FLAGS
+  -f, --force    Run yarn install with force flag.
+  -h, --help     Show CLI help.
+  -v, --verbose
+
+DESCRIPTION
+  Installs a plugin into the CLI.
+
+  Can be installed from npm or a git url.
+
+  Installation of a user-installed plugin will override a core plugin.
+
+  e.g. If you have a core plugin that has a 'hello' command, installing a user-installed plugin with a 'hello' command
+  will override the core plugin implementation. This is useful if a user needs to update core plugin functionality in
+  the CLI without the need to patch and update the whole CLI.
+
+ALIASES
+  $ gooey plugins add
+
+EXAMPLES
+  $ gooey plugins:install myplugin 
+
+  $ gooey plugins:install https://github.com/someuser/someplugin
+
+  $ gooey plugins:install someuser/someplugin
+```
+
+## `gooey plugins:link PLUGIN`
+
+Links a plugin into the CLI for development.
+
+```
+USAGE
+  $ gooey plugins:link PLUGIN
+
+ARGUMENTS
+  PATH  [default: .] path to plugin
+
+FLAGS
+  -h, --help     Show CLI help.
+  -v, --verbose
+
+DESCRIPTION
+  Links a plugin into the CLI for development.
+
+  Installation of a linked plugin will override a user-installed or core plugin.
+
+  e.g. If you have a user-installed or core plugin that has a 'hello' command, installing a linked plugin with a 'hello'
+  command will override the user-installed or core plugin implementation. This is useful for development work.
+
+EXAMPLES
+  $ gooey plugins:link myplugin
+```
+
+## `gooey plugins:uninstall PLUGIN...`
+
+Removes a plugin from the CLI.
+
+```
+USAGE
+  $ gooey plugins:uninstall PLUGIN...
+
+ARGUMENTS
+  PLUGIN  plugin to uninstall
+
+FLAGS
+  -h, --help     Show CLI help.
+  -v, --verbose
+
+DESCRIPTION
+  Removes a plugin from the CLI.
+
+ALIASES
+  $ gooey plugins unlink
+  $ gooey plugins remove
+```
+
+## `gooey plugins:uninstall PLUGIN...`
+
+Removes a plugin from the CLI.
+
+```
+USAGE
+  $ gooey plugins:uninstall PLUGIN...
+
+ARGUMENTS
+  PLUGIN  plugin to uninstall
+
+FLAGS
+  -h, --help     Show CLI help.
+  -v, --verbose
+
+DESCRIPTION
+  Removes a plugin from the CLI.
+
+ALIASES
+  $ gooey plugins unlink
+  $ gooey plugins remove
+```
+
+## `gooey plugins:uninstall PLUGIN...`
+
+Removes a plugin from the CLI.
+
+```
+USAGE
+  $ gooey plugins:uninstall PLUGIN...
+
+ARGUMENTS
+  PLUGIN  plugin to uninstall
+
+FLAGS
+  -h, --help     Show CLI help.
+  -v, --verbose
+
+DESCRIPTION
+  Removes a plugin from the CLI.
+
+ALIASES
+  $ gooey plugins unlink
+  $ gooey plugins remove
+```
+
+## `gooey plugins update`
+
+Update installed plugins.
+
+```
+USAGE
+  $ gooey plugins update [-h] [-v]
+
+FLAGS
+  -h, --help     Show CLI help.
+  -v, --verbose
+
+DESCRIPTION
+  Update installed plugins.
+```
+
+## `gooey workspace [CATEGORIES]`
+
+Manage a Terasology workspace.
+
+```
+USAGE
+  $ gooey workspace [CATEGORIES]
+
+ARGUMENTS
+  CATEGORIES  (root|libs|modules) [default: root,libs,modules] the categories of sub-repositories to work on. (default
+              all)
+
+DESCRIPTION
+  Manage a Terasology workspace.
+
+EXAMPLES
+  $ gooey-cli workspace:status
+```
+
+_See code: [dist/commands/workspace/index.ts](https://github.com/skaldarnar/node-gooey/blob/v0.2.0/dist/commands/workspace/index.ts)_
+
+## `gooey workspace load`
+
+Load a workspace from a JSON lockfile.
+
+```
+USAGE
+  $ gooey workspace load [-i <value>] [-f]
+
+FLAGS
+  -f, --force             Discard all local changes without asking.
+  -i, --lockfile=<value>  The lockfile to restore the workspace from. (default: <root>/workspace-lock.json)
+
+DESCRIPTION
+  Load a workspace from a JSON lockfile.
+
+EXAMPLES
+  $ gooey-cli workspace:load
+
+  $ gooey-cli workspace:load --lockfile terasology.lock --force
+```
+
+## `gooey workspace pin`
+
+Write a lock-file to pin module versions ({italic workspace-lock.json})
+
+```
+USAGE
+  $ gooey workspace pin [-o <value>] [--exact]
+
+FLAGS
+  -o, --lockfile=<value>  the lockfile for pinning/restoring a workspace
+  --exact                 pin the commit SHA instead of symbolic ref
+
+DESCRIPTION
+  Write a lock-file to pin module versions ({italic workspace-lock.json})
+
+EXAMPLES
+  $ gooey-cli workspace:pin
+
+  $ gooey-cli workspace:pin --exact --lockfile=terasology.lock
+```
+
+## `gooey workspace status [CATEGORIES]`
+
+Inspect the workspace or a specific workspace element.
+
+```
+USAGE
+  $ gooey workspace status [CATEGORIES] [--offline]
+
+ARGUMENTS
+  CATEGORIES  (root|libs|modules) [default: root,libs,modules] the categories of sub-repositories to work on. (default
+              all)
+
+FLAGS
+  --offline  fetch remote state before showing state (git fetch)
+
+DESCRIPTION
+  Inspect the workspace or a specific workspace element.
+
+EXAMPLES
+  $ gooey-cli workspace:status
+```
+<!-- commandsstop -->
+
+# References
+
+Check out [skaldarnar/gh-terasology](https://github.com/skaldarnar/gh-terasology) for GitHub-specific tooling for Terasology workspaces.
