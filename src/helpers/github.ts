@@ -1,11 +1,7 @@
 #!/usr/bin/env node
 
-const { Octokit } = require("@octokit/rest");
-
-const octokit = new Octokit({
-  auth: process.env.GITHUB_TOKEN
-});
-const { parse } = require('dot-properties')
+import { Octokit } from "@octokit/rest";
+import { parse } from "dot-properties";
 const fs = require('fs-extra')
 const execa = require("execa")
 
@@ -14,30 +10,39 @@ const indexRepo = {
   repo: "Index"
 }
 
-async function getDistro(distro) {
-  return octokit.repos.getContents({
+const octokit = new Octokit({
+    auth: process.env.GITHUB_TOKEN
+  });
+
+async function getDistro(distro: string) {
+  return octokit.repos.getContent({
     ...indexRepo,
     path: `/distros/${distro.toLowerCase()}/gradle.properties`
   }).then(response => {
-    // content will be base64 encoded
+    // @ts-ignore (content will be base64 encoded)
     const content = Buffer.from(response.data.content, 'base64').toString()
     const modules = parse(content).extraModules;
-    return modules.split(",")
+    if (typeof modules === "string") {
+        return modules.split(",")
+    }
+    throw new Error("Unexpected data format for 'extraModules' field of distro's 'gralde.properties'.")
   })
 }
 
 const availableDistributions = async () =>
-  octokit.repos.getContents({
+  octokit.repos.getContent({
     ...indexRepo,
     path: '/distros'
   }).then(response => {
-    const distros = response.data.filter(e => e.type === "dir").map(e => e.name);
-    console.log(JSON.stringify(response, null, 2))
-
-    return distros;
+    if (Array.isArray(response.data)) {
+      const distros = response.data.filter(e => e.type === "dir").map(e => e.name);
+      //console.debug(JSON.stringify(response, null, 2))
+      return distros;
+    }
+    throw new Error("Unexpected data format for available distros (expected array).")    
   })
 
-async function cloneModules(modules) {
+async function cloneModules(modules: string[]) {
   if (await fs.exists("./groovyw")) {
     await execa(
       "./groovyw", ["module", "get", ...modules],
@@ -46,7 +51,7 @@ async function cloneModules(modules) {
   }
 }
 
-const cloneDistribution = async (distro) => {
+const cloneDistribution = async (distro: string) => {
   const modules = await getDistro(distro)
   console.log(modules)
   cloneModules(modules)
@@ -54,17 +59,15 @@ const cloneDistribution = async (distro) => {
 
 /**
  * Add given topics to each repository of the organization or user.
- * @param {string} org
- * @param {Array<string>} topics 
  */
-async function addTopics(org, topics) {
+async function addTopics(org: string, topics: string[]) {
 
   const repos = await octokit.paginate(octokit.repos.listForOrg, {
     org: "terasology"
   }).then(repos => repos.map(r => r.name));
 
 
-  for (repo of repos) {
+  for (const repo of repos) {
     const currentTopics = (await octokit.repos.getAllTopics({
       owner: org,
       repo
@@ -83,7 +86,7 @@ async function addTopics(org, topics) {
 
 }
 
-module.exports = {
+export {
   cloneDistribution,
   availableDistributions,
   addTopics,
