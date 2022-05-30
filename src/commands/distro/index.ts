@@ -10,9 +10,9 @@ export default class Distro extends Command {
   static args = []
 
   public async run(): Promise<void> {
-    this.warn("Please select a distro command to run.")
+    this.warn('Please select a distro command to run.')
 
     const help = new Help(this.config)
-    await help.showHelp(["distro"]);
+    await help.showHelp(['distro'])
   }
 }

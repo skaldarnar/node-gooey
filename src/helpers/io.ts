@@ -1,7 +1,7 @@
-import { outputJSON, readJSON } from "fs-extra";
-import { join } from "path";
+import {outputJSON, readJSON} from 'fs-extra'
+import {join} from 'node:path'
 
-const MODULE = "module.txt";
+const MODULE = 'module.txt'
 
 type Options = {
     dryRun?: boolean
@@ -21,21 +21,22 @@ export type ModuleInfo = {
 }
 
 async function readModuleInfo(moduleDir: string): Promise<ModuleInfo> {
-    const moduleInfoFile = join(moduleDir, MODULE);
-    return await readJSON(moduleInfoFile);
+  const moduleInfoFile = join(moduleDir, MODULE)
+  return readJSON(moduleInfoFile)
 }
 
-async function writeModuleInfo(moduleDir: string, moduleInfo: ModuleInfo, options: Options = {}) {
-    const moduleInfoFile = join(moduleDir, MODULE);
+async function writeModuleInfo(moduleDir: string, moduleInfo: ModuleInfo, options: Options = {}): Promise<string> {
+  const moduleInfoFile = join(moduleDir, MODULE)
 
-    if (!options.dryRun) {
-        await outputJSON(moduleInfoFile, moduleInfo, { spaces: 4 });
-        return moduleInfoFile;
-    }
-    return moduleInfoFile;
+  if (!options.dryRun) {
+    await outputJSON(moduleInfoFile, moduleInfo, {spaces: 4})
+    return moduleInfoFile
+  }
+
+  return moduleInfoFile
 }
 
 export {
-    readModuleInfo,
-    writeModuleInfo
+  readModuleInfo,
+  writeModuleInfo,
 }
