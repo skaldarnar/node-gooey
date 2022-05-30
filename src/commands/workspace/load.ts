@@ -1,74 +1,112 @@
-//@ts-check
+import { CliUx, Command, Flags } from "@oclif/core";
+import chalk = require("chalk");
+import { readJSON } from "fs-extra";
+import { basename, join, resolve } from "path";
+import Debug from "debug";
+import asyncPool = require("tiny-async-pool");
 
-const { findRoot } = require("../../helpers/workspace");
-const { checkout: checkoutBranch } = require("../../helpers/git");
+import { findRoot } from "../../helpers/workspace";
+import { checkout, CheckoutOptions, CheckoutResult, StatusResult } from "../../helpers/git";
 
-const chalk = require("chalk");
-const fs = require("fs-extra");
-const { join, basename } = require("path");
-const asyncPool = require("tiny-async-pool");
-const ora = require('ora');
-const { Stream } = require("stream");
-
-module.exports.command = "restore";
-
-module.exports.describe = chalk`Restore a workspace from a {italic workspace-lock.json} lockfile`;
-
-module.exports.builder = (yargs) => {
-  return yargs
-    .option("lockfile", {
-      description: "the lockfile for pinning/restoring a workspace",
-      type: "string",
-      demandOption: false,
-    })
-    .option(
-      "force", {
-      description: "Dismiss all local changes withut asking.",
-      type: "bolean"
-    })
+type WorkspaceLoadOptions = {
+  force: boolean;
 };
 
-async function checkout(dir, ref, options) {
-  if (!fs.pathExistsSync(dir)) {
-    return chalk`{dim restore module} ${basename(dir).padEnd(32)} {yellow skipped} {dim (path does not exist: ${dir})}`
-  }
+export default class WorkspaceLoad extends Command {
+  static description = `Load a workspace from a JSON lockfile.`;
 
-  const result = await checkoutBranch(dir, {fetch: true, branch: ref, force: options.force});
+  static examples = [
+    "gooey-cli workspace:load",
+    "gooey-cli workspace:load --lockfile terasology.lock --force",
+  ];
 
-  return chalk`{dim restore module} ${basename(dir).padEnd(32)}@{green ${ref.padEnd(32)}} {dim (was ${result.before.current}@${result.before.ref.substring(0, 8)})}`
-}
+  static flags = {
+    lockfile: Flags.string({
+      char: "i",
+      description: chalk`The lockfile to restore the workspace from. {italic (default: <root>/workspace-lock.json)}`,
+    }),
+    force: Flags.boolean({
+      char: "f",
+      description: "Discard all local changes without asking.",
+    }),
+  };
 
-module.exports.handler = async (argv) => {
-  const spinner = ora('restoring workspace').start();
+  static args = [];
 
-  const root = await findRoot(process.cwd());
-  const src = argv.lockfile || join(root, "workspace-lock.json");
+  public async run(): Promise<void> {
+    const debug = Debug("workspace:load");
+    const { args, flags } = await this.parse(WorkspaceLoad);
 
-  const lock = await fs.readJSON(src);
+    const root = await findRoot(process.cwd());
+    const src = flags.lockfile ?? join(root, "workspace-lock.json");
 
-  //console.debug(JSON.stringify(lock, null, 2));
+    CliUx.ux.action.start(
+      `Reading lockfile from file:${resolve(process.cwd(), src)}`
+    );
+    const lock = await readJSON(src);
+    CliUx.ux.action.stop();
 
-  const rootMsg = await checkout(root, lock.ref, { force: argv.force});
-  spinner.succeed(rootMsg);
+    debug(JSON.stringify(lock, null, 2));
 
-  const modules = Object.entries(lock.modules).map(([modulePath, moduleInfo]) => {
-    return {
-      dir: join(root, modulePath),
-      ref: moduleInfo.ref,
-      options: { force: argv.force},
+    // Restore Engine (root)
+    this.log(chalk.bold("Engine"));
+    let res = await checkout(root, {
+      force: flags.force,
+      fetch: true,
+      branch: lock.ref,
+    });
+    debug(JSON.stringify(res, null, 2));
+    this.log(this.msg("engine", res));
+
+    // Restore Libs (libs/*)
+    const libs = Object.entries(lock.libs).map(
+      ([libPath, libInfo]) => {
+        return {
+          dir: join(root, libPath),
+          //@ts-ignore
+          options: { branch: libInfo.ref, force: flags.force },
+        };
+      }
+    );
+
+    const task = async (repo: { dir: string; options: CheckoutOptions }) =>
+        await checkout(repo.dir, repo.options);
+
+    if (libs.length > 0) {
+      this.log(chalk.bold("Libs"));
+      for await (const m of asyncPool(8, libs, task)) {
+        this.log(this.msg("libs", m));
+      }
     }
-  });
 
-  //console.debug(JSON.stringify(modules, null, 2));
+    // Restore Modules (modules/*)
+    const modules = Object.entries(lock.modules).map(
+      ([modulePath, moduleInfo]) => {
+        return {
+          dir: join(root, modulePath),
+          //@ts-ignore
+          options: { branch: moduleInfo.ref, force: flags.force },
+        };
+      }
+    );
 
-  const task = async ({dir, ref, options}) => {
-    const s = ora().start();
-    const result = await checkout(dir, ref, options);
-    s.succeed(result);
-    return result;
+    if (modules.length > 0) {
+      this.log(chalk.bold("Modules"));
+      for await (const m of asyncPool(8, modules, task)) {
+        this.log(this.msg("module", m));
+      }
+    }
   }
 
-  await asyncPool(8, modules, task);
-  
-  spinner.succeed("Done!");
-};
+  msg(category: string, result: CheckoutResult) {
+    const entry = chalk.dim(category.padStart(8)) + " " + result.name.padEnd(32);
+
+    const ref = (status: StatusResult) => `${status.current}@${status.ref.substring(0,8)}`;
+
+    if (result.before.ref === result.after.ref) {
+      return entry +  "skipped";
+    } else {
+      return entry + chalk`{dim ${ref(result.before)}} ⇢ {bold.green ${ref(result.after)}}`;
+    }
+  }
+}

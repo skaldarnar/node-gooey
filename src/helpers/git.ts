@@ -1,208 +1,219 @@
-//@ts-check
-
-const { basename } = require("path");
-
-/** @type {import("simple-git").SimpleGitFactory} */
-const simpleGit = require('simple-git');
+import { basename } from "path";
+import simpleGit, {
+  GitError,
+  SimpleGit,
+  StatusResult as GitStatusResult,
+} from "simple-git";
 
 /**
  * Resolve the ref for the given repository, either to the commit SHA or the current branch.
- * 
- * @param {import("simple-git").SimpleGit} git
- * @param {boolean} [exact]
- * @returns string
  */
-async function _getRef(git, exact) {
-    const branches = await git.branch();
-    if (branches.detached || branches.current === "" || exact) {
-        return await git.revparse("HEAD");
-    }
-    return branches.current;
+async function _getRef(git: SimpleGit, exact?: boolean) {
+  const branches = await git.branch();
+  if (branches.detached || branches.current === "" || exact) {
+    return await git.revparse("HEAD");
+  }
+  return branches.current;
 }
 /**
  * Resolve the ref for the given repository, either to the commit SHA or the current branch.
- * 
- * @param {string} dir 
- * @param {boolean} [exact] 
- * @returns string
  */
-async function getRef(dir, exact) {
-    const git = simpleGit(dir, {binary: 'git'});
-    return await _getRef(git, exact);
+async function getRef(dir: string, exact?: boolean) {
+  const git = simpleGit(dir, { binary: "git" });
+  return await _getRef(git, exact);
 }
 
-async function status(dir, fetch) {
-    const _git = simpleGit({ baseDir: dir, binary: 'git' });
-    const currentBranch = await _getRef(_git);
+export type StatusSummary = {
+  dir: string;
+  name: string;
+  status: StatusResult;
+};
 
-    if (fetch) {
-        await _git.fetch();
-    }
+async function status(dir: string, fetch: boolean): Promise<StatusSummary> {
+  const git: SimpleGit = simpleGit({ baseDir: dir, binary: "git" });
+  const currentBranch = await _getRef(git);
 
-    const status = await _git.status();
+  if (fetch) {
+    await git.fetch();
+  }
 
-    //TODO revisit this return type
-    return {
-        dir,
-        name: basename(dir),
-        ref: await _git.revparse("HEAD"),
-        status,
-        currentBranch,
-    }
-}
+  const status = await _status(git);
 
-async function update(dir, argv) {
-    const _git = simpleGit({ baseDir: dir, binary: 'git' });
-    const currentBranch = await _getRef(_git, false);
-    const before = await _status(_git);
-
-    let summary = await _updateCmd(_git, argv);
-
-    const after = await _status(_git);
-
-    //TODO: type definition for this return type
-    return {
-        dir,
-        name: basename(dir),
-        before,
-        after,
-        summary,
-        currentBranch
-    }
-}
-
-async function reset(dir, argv) {
-    const _git = simpleGit({ baseDir: dir, binary: 'git' });
-    const currentBranch = await _getRef(_git, false);
-    const before = await _status(_git);
-    await _resetCmd(_git, argv);
-    const after = await _status(_git);
-
-    // Since we use a 'raw' command to reset to the default branch, there is no
-    // command summary available. To bridge this gap, we manually compute the 
-    // diff between the 'before' and 'after' states.
-    const summary = {
-        summary: await _git.diff([before.ref, after.ref])
-    }
-
-    //TODO: type definition for this return type
-    return {
-        dir,
-        name: basename(dir),
-        before,
-        after,
-        summary,
-        currentBranch
-    }
-}
-/**
- * 
- * @param {string} dir 
- * @param {{force: boolean, branch: string, fetch: boolean}} argv 
- * @returns 
- */
-async function checkout(dir, argv) {
-    const _git = simpleGit({ baseDir: dir, binary: 'git' });
-    const currentBranch = await _getRef(_git, false);
-    const before = await _status(_git);
-    const summary = await _checkoutCommand(_git, argv);
-    const after = await _status(_git);
-
-    // Since we use a 'raw' command to reset to the default branch, there is no
-    // command summary available. To bridge this gap, we manually compute the 
-    // diff between the 'before' and 'after' states.
-    // const summary = {
-    //     summary: await _git.diff([before.ref, after.ref])
-    // }
-
-    //TODO: type definition for this return type
-    return {
-        dir,
-        name: basename(dir),
-        before,
-        after,
-        summary,
-        currentBranch
-    }
-}
-
-async function _status(git) {
-    const result = await git.status();
-    result.ref = await git.revparse("HEAD");
-    return result;
-}
-
-async function _updateCmd(git, argv) {
-    let summary = {};
-    try {
-        let options = [
-            '--ff-only'
-        ];
-        if (argv.force) {
-            options.push('--force')
-        }
-        summary = (await git.pull(options));
-    } catch (e) {
-        summary.error = e;
-    }
-    return summary;
-}
-
-async function _resetCmd(git, argv) {
-    if (argv.fetch) {
-        await git.fetch();
-    }
-
-    const defaultBranch = "develop";
-    const force = argv.force ? ['--discard-changes'] : []
-    try {
-        let options = [
-            'switch',
-            ...force,
-            '--force-create',
-            defaultBranch,
-            `origin/${defaultBranch}`
-        ];
-        await git.raw(options);
-        return {};
-    } catch (e) {
-        return {
-            error: e
-        };
-    }
-}
-
-/**
- * 
- * @param {import("simple-git").SimpleGit} git 
- * @param {{force: boolean, branch: string, fetch: boolean}} argv 
- * @returns 
- */
-async function _checkoutCommand(git, argv) {
-    if (argv.fetch) {
-        await git.fetch();
-    }
-
-    const force = argv.force ? ['--discard-changes'] : []
-    try {
-        let options = [
-            'switch',
-            ...force,
-            argv.branch
-        ];
-        const result = await git.raw(options);
-        return result;
-    } catch (error) {        
-        return {
-            error
-        };
-    }
-}
-
-module.exports = {
-    getRef,
+  //TODO revisit this return type
+  return {
+    dir,
+    name: basename(dir),
     status,
-    update,
-    reset,
-    checkout,
+  };
 }
+
+type UpdateOptions = {
+  force: boolean;
+};
+
+async function update(dir: string, options: UpdateOptions) {
+  const _git = simpleGit({ baseDir: dir, binary: "git" });
+  const currentBranch = await _getRef(_git, false);
+  const before = await _status(_git);
+
+  let summary = await _updateCmd(_git, options);
+
+  const after = await _status(_git);
+
+  //TODO: type definition for this return type
+  return {
+    dir,
+    name: basename(dir),
+    before,
+    after,
+    summary,
+    currentBranch,
+  };
+}
+
+type ResetOptions = {
+  force: boolean;
+  fetch: boolean;
+};
+
+async function reset(dir: string, options: ResetOptions) {
+  const _git = simpleGit({ baseDir: dir, binary: "git" });
+  const currentBranch = await _getRef(_git, false);
+  const before = await _status(_git);
+  await _resetCmd(_git, options);
+  const after = await _status(_git);
+
+  // Since we use a 'raw' command to reset to the default branch, there is no
+  // command summary available. To bridge this gap, we manually compute the
+  // diff between the 'before' and 'after' states.
+  const summary = {
+    summary: await _git.diff([before.ref, after.ref]),
+  };
+
+  //TODO: type definition for this return type
+  return {
+    dir,
+    name: basename(dir),
+    before,
+    after,
+    summary,
+    currentBranch,
+  };
+}
+
+export type CheckoutOptions = {
+  force: boolean;
+  branch: string;
+  fetch?: boolean;
+};
+
+export type CheckoutResult = {
+  dir: string,
+  name: string,
+  before: StatusResult,
+  after: StatusResult,
+  currentBranch: string,
+  summary: string | GitError,
+}
+
+async function checkout(dir: string, options: CheckoutOptions): Promise<CheckoutResult> {
+  const _git = simpleGit({ baseDir: dir, binary: "git" });
+  const currentBranch = await _getRef(_git, false);
+  const before = await _status(_git);
+  const summary = await _checkoutCommand(_git, options);
+  const after = await _status(_git);
+
+  // Since we use a 'raw' command to reset to the default branch, there is no
+  // command summary available. To bridge this gap, we manually compute the
+  // diff between the 'before' and 'after' states.
+  // const summary = {
+  //     summary: await _git.diff([before.ref, after.ref])
+  // }
+
+  //TODO: type definition for this return type
+  return {
+    dir,
+    name: basename(dir),
+    before,
+    after,
+    summary,
+    currentBranch,
+  };
+}
+
+export type StatusResult = GitStatusResult & { ref: string };
+
+async function _status(git: SimpleGit): Promise<StatusResult> {
+  const result = await git.status();
+  return {
+    ...result,
+    ref: await git.revparse("HEAD"),
+  };
+}
+
+async function _updateCmd(git: SimpleGit, options: UpdateOptions) {
+  try {
+    let ops = ["--ff-only"];
+    if (options.force) {
+      ops.push("--force");
+    }
+    const result = await git.pull(ops);
+    return result;
+  } catch (e) {
+    //@ts-ignore
+    const error: GitError = e;
+    return {
+      error,
+    };
+  }
+}
+
+async function _resetCmd(
+  git: SimpleGit,
+  options: ResetOptions
+): Promise<string | GitError> {
+  if (options.fetch) {
+    await git.fetch();
+  }
+
+  const defaultBranch = "develop";
+  const force = options.force ? ["--discard-changes"] : [];
+  try {
+    let ops = [
+      "switch",
+      ...force,
+      "--force-create",
+      defaultBranch,
+      `origin/${defaultBranch}`,
+    ];
+
+    return await git.raw(ops);
+  } catch (e) {
+    //@ts-ignore
+    const error: GitError = e;
+    return error;
+  }
+}
+
+async function _checkoutCommand(
+  git: SimpleGit,
+  options: CheckoutOptions
+): Promise<string | GitError> {
+  if (options.fetch) {
+    await git.fetch();
+  }
+
+  const force = options.force ? ["--discard-changes"] : [];
+  try {
+    let ops = ["switch", ...force, options.branch];
+    const result = await git.raw(ops);
+    return result;
+  } catch (error) {
+    return {
+      //@ts-ignore
+      error,
+    };
+  }
+}
+
+export { getRef, status, update, reset, checkout };

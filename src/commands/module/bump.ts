@@ -1,60 +1,87 @@
-//@ts-check
+import { Command, Flags } from "@oclif/core";
+import chalk = require("chalk");
+import { basename } from "path";
+import asyncPool = require("tiny-async-pool");
 
-const { increment, updateDependency } = require("../helpers/modules")
-const { findRoot, listModules } = require("../helpers/workspace");
+import { increment, updateDependency } from "../../helpers/modules";
+import { findRoot, listModules } from "../../helpers/workspace";
 
-const chalk = require("chalk")
-const asyncPool = require("tiny-async-pool");
+export default class Bump extends Command {
+  static description = chalk`Bump the version for a specific module, and update all references ({italic module.txt})`;
 
-module.exports.command = "module <m>";
+  static examples = ["gooey-cli module:bump"];
 
-module.exports.describe = "Manage a module and its dependencies and dependants.";
+  /** Semver scopes for version increments. */
+  static scopes = [
+    "major",
+    "minor",
+    "patch",
+    "premajor",
+    "preminor",
+    "prepatch",
+  ];
 
-const semverLevel = ["major", "minor", "patch", "premajor", "preminor", "prepatch"]
+  static flags = {
+    "dry-run": Flags.boolean({
+      char: "n",
+      description: "Perform a dry run without any changes made.",
+    }),
+    scope: Flags.string({
+      char: "s",
+      description: "Increment a version by the specified level.",
+      options: this.scopes,
+      default: "minor",
+    }),
+  };
 
-module.exports.builder = (yargs) => {
-  yargs
-    .positional("m", {
-      describe: "the module to manage"
-    })
-    .option("dry-run", {
-      alias: "n",
-      describe: "perform a try run without any changes made",
-      type: "boolean"
-    })
-    .command(
-      "bump <m>",
-      chalk`set the version for a specific module, and update all references ({italic module.txt})`,
-      (yargs) => { 
-        yargs.option("level", {
-          describe: `Increment a version by the specified level. Level can be one of: major, minor, patch, premajor, preminor, prepatch. Default level is 'minor'.`,
-          choices: semverLevel,
-          default: "minor",
-        })
-      },
-      async (argv) => {
-        const workspace = await findRoot(process.cwd());
-        const modules = await listModules(workspace);
+  static args = [
+    {
+      name: "module",
+      description: "The module to increment the version on.",
+    },
+  ];
 
-        const targetModule = modules.find(el => el.endsWith(argv.m));
+  public async run(): Promise<void> {
+    const { args, flags } = await this.parse(Bump);
 
-        const result = await increment(targetModule, argv.level, {dryRun: argv.dryRun});
-        console.log(`Bumping version for '${argv.m}' from ${result.oldVersion} to ${result.newVersion}`);
+    const workspace = await findRoot(process.cwd());
+    const modules = await listModules(workspace);
 
-        const task = async (m) => {
-              const info = await updateDependency(m, argv.m, result.newVersion, {dryRun: argv.dryRun});
-              if (info.newVersion) {
-                return `\t${info.id.padEnd(24)}: ${info.oldVersion} >>> ${info.newVersion}`;
-              }
-              return;
-        };
+    const target = args.module ?? basename(process.cwd());
 
-        const msgs = await asyncPool(16, modules, task)
-        console.log(msgs.filter(el => el).sort().join("\n"))
+    const targetModule = modules.find((el) => el.endsWith(target));
+
+    if (!targetModule) {
+      this.error(`Unknown module: ${target}`);
+    }
+
+    const result = await increment(targetModule, flags.scope, {
+      dryRun: flags["dry-run"],
+    });
+    this.log(
+      chalk.bold(target.padEnd(32)) +
+        ": " +
+        chalk.dim(result.oldVersion.padEnd(18)) +
+        " ⇢ " +
+        result.newVersion.padEnd(18)
+    );
+
+    const task = async (m: string) =>
+      await updateDependency(m, target, result.newVersion, {
+        dryRun: flags["dry-run"],
+      });
+
+    for await (const info of asyncPool(8, modules, task)) {
+      if (info.newVersion) {
+        this.log(
+          "  " +
+            info.id.padEnd(30) +
+            ": " +
+            chalk.dim(info.oldVersion?.padEnd(18)) +
+            " ⇢ " +
+            info.newVersion?.padEnd(18)
+        );
       }
-    )
-    .demandCommand()
-    .help()
-};
-
-module.exports.handler = async (argv) => { };
+    }
+  }
+}

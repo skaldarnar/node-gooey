@@ -1,24 +1,41 @@
-const { join } = require("path");
-const fs = require("fs-extra");
+import { outputJSON, readJSON } from "fs-extra";
+import { join } from "path";
 
 const MODULE = "module.txt";
 
-async function readModuleInfo(module) {
-    const moduleInfoFile = join(module, MODULE);
-    return await fs.readJSON(moduleInfoFile);
+type Options = {
+    dryRun?: boolean
 }
 
-async function writeModuleInfo(module, moduleInfo, options={}) {
-    const moduleInfoFile = join(module, MODULE);
+export type ModuleDependency = {
+    id: string,
+    optional?: boolean,
+    minVersion: string
+}
+
+export type ModuleInfo = {
+    id: string,
+    version: string,
+    displayName?: string,
+    dependencies: [ModuleDependency]
+}
+
+async function readModuleInfo(moduleDir: string): Promise<ModuleInfo> {
+    const moduleInfoFile = join(moduleDir, MODULE);
+    return await readJSON(moduleInfoFile);
+}
+
+async function writeModuleInfo(moduleDir: string, moduleInfo: ModuleInfo, options: Options = {}) {
+    const moduleInfoFile = join(moduleDir, MODULE);
 
     if (!options.dryRun) {
-        await fs.outputJSON(moduleInfoFile, moduleInfo, { spaces: 4 });
+        await outputJSON(moduleInfoFile, moduleInfo, { spaces: 4 });
         return moduleInfoFile;
     }
     return moduleInfoFile;
 }
 
-module.exports = {
+export {
     readModuleInfo,
     writeModuleInfo
 }

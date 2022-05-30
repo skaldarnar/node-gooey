@@ -1,10 +1,14 @@
 //@ts-check
 
-const io = require("./io");
+import { readModuleInfo, writeModuleInfo } from "./io";
 const semver = require("semver");
 
-async function increment(module, level, options) {
-  const moduleInfo = await io.readModuleInfo(module);
+type Options = {
+  dryRun?: boolean
+}
+
+async function increment(module: string, level: string, options: Options) {
+  const moduleInfo = await readModuleInfo(module);
 
   const currentVersion = moduleInfo.version;
   if (level.startsWith("pre")) {
@@ -14,8 +18,7 @@ async function increment(module, level, options) {
   }
 
   if (!options.dryRun) {
-    await io.writeModuleInfo(module, moduleInfo, options);
-    //await fs.writeJSON(moduleInfoFile, moduleInfo, { spaces: 4 });
+    await writeModuleInfo(module, moduleInfo, options);
   }
 
   return {
@@ -25,8 +28,8 @@ async function increment(module, level, options) {
   }
 }
 
-async function updateDependency(module, dependency, version, options) {
-  const moduleInfo = await io.readModuleInfo(module);
+async function updateDependency(module: string, dependency: string, version: string, options: Options) {
+  const moduleInfo = await readModuleInfo(module);
 
   const entry = moduleInfo.dependencies.find(el => el.id === dependency);
   if (entry) {
@@ -34,7 +37,7 @@ async function updateDependency(module, dependency, version, options) {
     entry.minVersion = version
 
     if (!options.dryRun) {
-      await io.writeModuleInfo(module, moduleInfo, { spaces: 4 });
+      await writeModuleInfo(module, moduleInfo, options);
     }
 
     return {
@@ -48,7 +51,7 @@ async function updateDependency(module, dependency, version, options) {
   }
 }
 
-module.exports = {
+export {
   increment,
   updateDependency,
 };

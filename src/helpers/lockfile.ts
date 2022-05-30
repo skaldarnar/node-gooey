@@ -1,24 +1,14 @@
-//@ts-check
+import { listLibs, listModules } from "./workspace";
+import { getRef } from "./git";
 
-const chalk = require("chalk");
-const { listModules } = require("./workspace");
-const fs = require("fs-extra");
-const { join, resolve, relative } = require("path");
-const { getRef } = require("./git");
-/** @type {import("simple-git").SimpleGitFactory} */
-const SimpleGit = require("simple-git");
+import * as fs from "fs-extra";
+import { join, resolve, relative, basename } from "path";
 
-/**
- * @typedef {Object} Options
- * @property {boolean} exact - resolve commit SHA instead of symbolic reference
- */
+type Options = {
+  exact: boolean;
+}
 
-/**
- * 
- * @param {string} workspace 
- * @param {Options} options 
- */
-async function moduleLock(workspace, options) {
+async function moduleLock(workspace: string, options: Options) {
   const modules = await listModules(workspace);
   const entries = await Promise.all(modules.map(async dir => {
     const ref = await getRef(dir, options.exact);
@@ -32,7 +22,7 @@ async function moduleLock(workspace, options) {
     }
   }));
 
-  let result = {}
+  let result: {[index:string]: {name: string, version: string, ref: string}} = {}
 
   for (const m of entries) {
     result[m.dir] = {
@@ -44,22 +34,33 @@ async function moduleLock(workspace, options) {
   return result;
 }
 
-/**
- * 
- * @param {string} workspace 
- * @param {Options} options 
- */
-async function libLock(workspace, options) {
-  console.log(chalk.yellow("Pinning libraries is not supported yet"));
-  return {};
+async function libLock(workspace:string, options: Options) {
+  const libs = await listLibs(workspace);
+  console.log(JSON.stringify(libs, null, 2));
+  const entries = await Promise.all(libs.map(async dir => {
+    const ref = await getRef(dir, options.exact);
+
+    return {
+      name: basename(dir),
+      version: "",
+      dir: relative(workspace, dir),
+      ref
+    }
+  }));
+
+  let result: {[index:string]: {name: string, version: string, ref: string}} = {}
+
+  for (const m of entries) {
+    result[m.dir] = {
+      name: m.name,
+      version: m.version,
+      ref: m.ref
+    }
+  }
+  return result;
 }
 
-/**
- * 
- * @param {string} workspace 
- * @param {Options} options 
- */
-async function lockfile(workspace, options) {
+async function lockfile(workspace:string, options: Options) {
   const engineInfo = JSON.parse(fs.readFileSync(join(workspace, "engine/src/main/resources/org/terasology/engine/module.txt"), "utf-8"));
   const ref = await getRef(workspace, options.exact);
 
@@ -75,6 +76,6 @@ async function lockfile(workspace, options) {
   return lock;
 }
 
-module.exports = {
+export {
   lockfile,
 };

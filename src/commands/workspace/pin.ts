@@ -1,32 +1,52 @@
-//@ts-check
+import { CliUx, Command, Flags } from "@oclif/core";
+import chalk = require("chalk");
+import { writeJson } from "fs-extra";
+import { join, resolve } from "path";
+import Debug from "debug";
 
-const chalk = require("chalk");
-const { lockfile } = require("../../helpers/lockfile");
-const { findRoot } = require("../../helpers/workspace");
-const fs = require("fs-extra");
-const {join, relative} = require("path");
+import { lockfile } from "../../helpers/lockfile";
+import { findRoot } from "../../helpers/workspace";
 
-module.exports.command = "pin";
+export default class WorkspacePin extends Command {
+  static description =
+    "Write a lock-file to pin module versions ({italic workspace-lock.json})";
 
-module.exports.describe = chalk`Write a lock-file to pin module versions ({italic workspace-lock.json})`;
+  static examples = [
+    "gooey-cli workspace:pin",
+    "gooey-cli workspace:pin --exact --lockfile=terasology.lock",
+  ];
 
-module.exports.builder = (yargs) => {
-  return yargs
-    .option("lockfile", {
+  static flags = {
+    lockfile: Flags.string({
+      char: "o",
       description: "the lockfile for pinning/restoring a workspace",
-      type: "string"
-    })
-    .option("exact", {
+    }),
+    exact: Flags.boolean({
       description: "pin the commit SHA instead of symbolic ref",
-      type: "boolean"
-    })
-};
+    }),
+  };
 
-module.exports.handler = async (argv) => {
-  const root = await findRoot(process.cwd());
-  const lock = await lockfile(root, {exact: argv.exact});
+  static args = [];
 
-  const dest = argv.lockfile || join(root, "workspace-lock.json");
-  console.log(chalk`{dim writing lock file to }${relative(process.cwd(), dest)}`);
-  await fs.writeJSON(dest, lock, {spaces: 2});
-};
+  public async run(): Promise<void> {
+    const debug = Debug("workspace:load");
+    const { args, flags } = await this.parse(WorkspacePin);
+
+    const root = await findRoot(process.cwd());
+
+    const dest = flags.lockfile ?? join(root, "workspace-lock.json");
+
+    CliUx.ux.action.start(chalk.dim`computing lockfile for workspace`);
+    const lock = await lockfile(root, { exact: flags.exact });
+    debug(JSON.stringify(lock, null, 2));
+    CliUx.ux.action.stop();
+
+    CliUx.ux.action.start(chalk.dim`writing workspace lockfile`);
+
+    this.debug(JSON.stringify(lock, null, 2));
+    await writeJson(dest, lock, { spaces: 2 });
+    CliUx.ux.action.stop();
+
+    this.log("\tfile:" + resolve(process.cwd(), dest));
+  }
+}

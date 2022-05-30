@@ -1,23 +1,27 @@
-//@ts-check
+import {Command, Help} from '@oclif/core'
+import * as chalk from "chalk"
 
-const chalk = require("chalk");
+export default class Workspace extends Command {
+  static description = 'Manage a Terasology workspace.'
 
-const categories = ["root", "libs", "modules"]
+  static examples = [
+    `$ gooey-cli workspace:status`,
+  ]
 
-module.exports.command = "workspace";
+  static categories = ["root", "libs", "modules"]
+  static args = [
+    {
+      name: 'categories',
+      description: chalk`the categories of sub-repositories to work on. (default {italic all})`,
+      default: this.categories,
+      options: this.categories,
+    }
+  ]
 
-module.exports.describe = "Manage a Terasology workspace";
+  async run(): Promise<void> {
+    this.warn("Please select a workspace command to run.")
 
-module.exports.builder = (yargs) => {
-  return yargs
-    .commandDir("./workspace_cmds")
-    .positional("categories", {
-      describe: `the categories of sub-repositories to work on. (default ${chalk.italic("all")})`,
-      choices: categories,
-      default: categories,
-    })
-    .demandCommand()
-    .help()
-};
-
-module.exports.handler = async (argv) => { };
+    const help = new Help(this.config)
+    await help.showHelp(["workspace"]);
+  }
+}
