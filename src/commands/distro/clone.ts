@@ -1,9 +1,9 @@
-import { Command } from "@oclif/core";
-import { cloneDistribution } from "../../helpers/github";
+import {Command} from '@oclif/core'
+import {cloneDistribution} from '../../helpers/github'
 
 export default class DistroClone extends Command {
   static description =
-    "Clone all modules of the given distribution to the local workspace.";
+    'Clone all modules of the given distribution to the local workspace.';
 
   static examples = [];
 
@@ -11,14 +11,14 @@ export default class DistroClone extends Command {
 
   static args = [
     {
-      name: "distro",
-      description: `The distribution to clone. Default is 'iota', the minimal reasonable module set.`,
-      default: "iota",
+      name: 'distro',
+      description: 'The distribution to clone. Default is \'iota\', the minimal reasonable module set.',
+      default: 'iota',
     },
   ];
 
   public async run(): Promise<void> {
-    const { args, flags } = await this.parse(DistroClone);
-    await cloneDistribution(args.distro);
+    const {args} = await this.parse(DistroClone)
+    await cloneDistribution(args.distro)
   }
 }

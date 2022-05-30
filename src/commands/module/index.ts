@@ -9,8 +9,8 @@ export default class Module extends Command {
 
   async run(): Promise<void> {
     const help = new Help(this.config)
-    await help.showHelp(["module"]);
+    await help.showHelp(['module'])
 
-    this.warn("Please select a module command to run.")
+    this.warn('Please select a module command to run.')
   }
 }

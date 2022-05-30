@@ -1,26 +1,35 @@
-import { basename } from "path";
+import {basename} from 'node:path'
+
 import simpleGit, {
   GitError,
+  PullResult,
   SimpleGit,
   StatusResult as GitStatusResult,
-} from "simple-git";
+} from 'simple-git'
+
+/**
+ * Resolve the ref for the given repository, either to the commit SHA or the current branch.
+ *
+ * @param git the git client initialized to the target repository
+ * @param exact whether to return a symbolic ref (e.g., branch name) or an exact SHA
+ *
+ * @returns the current ref for the target repository
+ */
+async function _getRef(git: SimpleGit, exact?: boolean): Promise<string> {
+  const branches = await git.branch()
+  if (branches.detached || branches.current === '' || exact) {
+    return git.revparse('HEAD')
+  }
+
+  return branches.current
+}
 
 /**
  * Resolve the ref for the given repository, either to the commit SHA or the current branch.
  */
-async function _getRef(git: SimpleGit, exact?: boolean) {
-  const branches = await git.branch();
-  if (branches.detached || branches.current === "" || exact) {
-    return await git.revparse("HEAD");
-  }
-  return branches.current;
-}
-/**
- * Resolve the ref for the given repository, either to the commit SHA or the current branch.
- */
-async function getRef(dir: string, exact?: boolean) {
-  const git = simpleGit(dir, { binary: "git" });
-  return await _getRef(git, exact);
+async function getRef(dir: string, exact?: boolean): Promise<string> {
+  const git = simpleGit(dir, {binary: 'git'})
+  return _getRef(git, exact)
 }
 
 export type StatusSummary = {
@@ -30,37 +39,45 @@ export type StatusSummary = {
 };
 
 async function status(dir: string, fetch: boolean): Promise<StatusSummary> {
-  const git: SimpleGit = simpleGit({ baseDir: dir, binary: "git" });
-  const currentBranch = await _getRef(git);
+  const git: SimpleGit = simpleGit({baseDir: dir, binary: 'git'})
 
   if (fetch) {
-    await git.fetch();
+    await git.fetch()
   }
 
-  const status = await _status(git);
+  const status = await _status(git)
 
-  //TODO revisit this return type
+  // TODO: revisit this return type
   return {
     dir,
     name: basename(dir),
     status,
-  };
+  }
 }
 
 type UpdateOptions = {
   force: boolean;
 };
 
-async function update(dir: string, options: UpdateOptions) {
-  const _git = simpleGit({ baseDir: dir, binary: "git" });
-  const currentBranch = await _getRef(_git, false);
-  const before = await _status(_git);
+type UpdateResult = {
+  dir: string,
+  name: string,
+  before: StatusResult,
+  after: StatusResult,
+  summary: PullResult | { error: GitError },
+  currentBranch: string
+}
 
-  let summary = await _updateCmd(_git, options);
+async function update(dir: string, options: UpdateOptions): Promise<UpdateResult> {
+  const _git = simpleGit({baseDir: dir, binary: 'git'})
+  const currentBranch = await _getRef(_git, false)
+  const before = await _status(_git)
 
-  const after = await _status(_git);
+  const summary = await _updateCmd(_git, options)
 
-  //TODO: type definition for this return type
+  const after = await _status(_git)
+
+  // TODO: type definition for this return type
   return {
     dir,
     name: basename(dir),
@@ -68,7 +85,7 @@ async function update(dir: string, options: UpdateOptions) {
     after,
     summary,
     currentBranch,
-  };
+  }
 }
 
 type ResetOptions = {
@@ -76,21 +93,30 @@ type ResetOptions = {
   fetch: boolean;
 };
 
-async function reset(dir: string, options: ResetOptions) {
-  const _git = simpleGit({ baseDir: dir, binary: "git" });
-  const currentBranch = await _getRef(_git, false);
-  const before = await _status(_git);
-  await _resetCmd(_git, options);
-  const after = await _status(_git);
+type ResetResult = {
+  dir: string,
+  name: string,
+  before: StatusResult,
+  after: StatusResult,
+  summary: { summary: string },
+  currentBranch: string,
+}
+
+async function reset(dir: string, options: ResetOptions): Promise<ResetResult> {
+  const _git = simpleGit({baseDir: dir, binary: 'git'})
+  const currentBranch = await _getRef(_git, false)
+  const before = await _status(_git)
+  await _resetCmd(_git, options)
+  const after = await _status(_git)
 
   // Since we use a 'raw' command to reset to the default branch, there is no
   // command summary available. To bridge this gap, we manually compute the
   // diff between the 'before' and 'after' states.
   const summary = {
     summary: await _git.diff([before.ref, after.ref]),
-  };
+  }
 
-  //TODO: type definition for this return type
+  // TODO: type definition for this return type
   return {
     dir,
     name: basename(dir),
@@ -98,7 +124,7 @@ async function reset(dir: string, options: ResetOptions) {
     after,
     summary,
     currentBranch,
-  };
+  }
 }
 
 export type CheckoutOptions = {
@@ -117,11 +143,11 @@ export type CheckoutResult = {
 }
 
 async function checkout(dir: string, options: CheckoutOptions): Promise<CheckoutResult> {
-  const _git = simpleGit({ baseDir: dir, binary: "git" });
-  const currentBranch = await _getRef(_git, false);
-  const before = await _status(_git);
-  const summary = await _checkoutCommand(_git, options);
-  const after = await _status(_git);
+  const _git = simpleGit({baseDir: dir, binary: 'git'})
+  const currentBranch = await _getRef(_git, false)
+  const before = await _status(_git)
+  const summary = await _checkoutCommand(_git, options)
+  const after = await _status(_git)
 
   // Since we use a 'raw' command to reset to the default branch, there is no
   // command summary available. To bridge this gap, we manually compute the
@@ -130,7 +156,7 @@ async function checkout(dir: string, options: CheckoutOptions): Promise<Checkout
   //     summary: await _git.diff([before.ref, after.ref])
   // }
 
-  //TODO: type definition for this return type
+  // TODO: type definition for this return type
   return {
     dir,
     name: basename(dir),
@@ -138,82 +164,83 @@ async function checkout(dir: string, options: CheckoutOptions): Promise<Checkout
     after,
     summary,
     currentBranch,
-  };
+  }
 }
 
 export type StatusResult = GitStatusResult & { ref: string };
 
 async function _status(git: SimpleGit): Promise<StatusResult> {
-  const result = await git.status();
+  const result = await git.status()
   return {
     ...result,
-    ref: await git.revparse("HEAD"),
-  };
+    ref: await git.revparse('HEAD'),
+  }
 }
 
 async function _updateCmd(git: SimpleGit, options: UpdateOptions) {
   try {
-    let ops = ["--ff-only"];
+    const ops = ['--ff-only']
     if (options.force) {
-      ops.push("--force");
+      ops.push('--force')
     }
-    const result = await git.pull(ops);
-    return result;
-  } catch (e) {
-    //@ts-ignore
-    const error: GitError = e;
+
+    const result = await git.pull(ops)
+    return result
+  } catch (error_) {
+    // @ts-ignore
+    const error: GitError = error_
     return {
       error,
-    };
+    }
   }
 }
 
 async function _resetCmd(
   git: SimpleGit,
-  options: ResetOptions
+  options: ResetOptions,
 ): Promise<string | GitError> {
   if (options.fetch) {
-    await git.fetch();
+    await git.fetch()
   }
 
-  const defaultBranch = "develop";
-  const force = options.force ? ["--discard-changes"] : [];
+  const defaultBranch = 'develop'
+  const force = options.force ? ['--discard-changes'] : []
   try {
-    let ops = [
-      "switch",
+    const ops = [
+      'switch',
       ...force,
-      "--force-create",
+      '--force-create',
       defaultBranch,
       `origin/${defaultBranch}`,
-    ];
+    ]
 
-    return await git.raw(ops);
-  } catch (e) {
-    //@ts-ignore
-    const error: GitError = e;
-    return error;
+    return await git.raw(ops)
+  } catch (error_) {
+    // @ts-ignore
+    const error: GitError = error_
+    return error
   }
 }
 
 async function _checkoutCommand(
   git: SimpleGit,
-  options: CheckoutOptions
+  options: CheckoutOptions,
 ): Promise<string | GitError> {
   if (options.fetch) {
-    await git.fetch();
+    await git.fetch()
   }
 
-  const force = options.force ? ["--discard-changes"] : [];
+  const force = options.force ? ['--discard-changes'] : []
   try {
-    let ops = ["switch", ...force, options.branch];
-    const result = await git.raw(ops);
-    return result;
+    const ops = ['switch', ...force, options.branch]
+    const result = await git.raw(ops)
+    return result
   } catch (error) {
     return {
-      //@ts-ignore
+      // @ts-ignore
       error,
-    };
+    }
   }
 }
 
-export { getRef, status, update, reset, checkout };
+export {getRef, status, update, reset, checkout}

@@ -2,5 +2,17 @@
   "extends": [
     "oclif",
     "oclif-typescript"
-  ]
+  ],
+  "rules": {
+    "@typescript-eslint/ban-ts-comment": "off",
+    "valid-jsdoc": "off",
+    "no-warning-comments": "off",
+    "unicorn/consistent-function-scoping": [1, {
+      "checkArrowFunctions": false
+    }]
+  },
+  "env": {
+    "node": true,
+    "es6": true
+  }
 }

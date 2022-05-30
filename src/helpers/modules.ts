@@ -1,57 +1,67 @@
-//@ts-check
+import {readModuleInfo, writeModuleInfo} from './io'
 
-import { readModuleInfo, writeModuleInfo } from "./io";
-const semver = require("semver");
+import semver = require('semver')
 
 type Options = {
   dryRun?: boolean
 }
 
-async function increment(module: string, level: string, options: Options) {
-  const moduleInfo = await readModuleInfo(module);
+type IncrementResult = {
+  id: string,
+  oldVersion?: string,
+  newVersion?: string
+}
 
-  const currentVersion = moduleInfo.version;
-  if (level.startsWith("pre")) {
-    moduleInfo.version = semver.inc(currentVersion, level.substring(3)) + "-SNAPSHOT";
-  } else {
-    moduleInfo.version = semver.inc(currentVersion, level);
+async function increment(module: string, level: string, options: Options): Promise<IncrementResult> {
+  const moduleInfo = await readModuleInfo(module)
+
+  const currentVersion = moduleInfo.version
+  // @ts-ignore
+  const scope: semver.ReleaseType =  level.startsWith('pre') ? level.slice(3) : level
+  const newVersion = level.startsWith('pre') ? semver.inc(currentVersion, scope) + '-SNAPSHOT' : semver.inc(currentVersion, scope)
+
+  if (newVersion === null) {
+    throw new Error(`Could not increment version '${currentVersion}' by semver scope '${scope}.`)
   }
 
+  moduleInfo.version = newVersion
+
   if (!options.dryRun) {
-    await writeModuleInfo(module, moduleInfo, options);
+    await writeModuleInfo(module, moduleInfo, options)
   }
 
   return {
     id: moduleInfo.id,
     oldVersion: currentVersion,
-    newVersion: moduleInfo.version
+    newVersion: moduleInfo.version,
   }
 }
 
-async function updateDependency(module: string, dependency: string, version: string, options: Options) {
-  const moduleInfo = await readModuleInfo(module);
+async function updateDependency(module: string, dependency: string, version: string, options: Options): Promise<IncrementResult> {
+  const moduleInfo = await readModuleInfo(module)
 
-  const entry = moduleInfo.dependencies.find(el => el.id === dependency);
+  const entry = moduleInfo.dependencies.find(el => el.id === dependency)
   if (entry) {
-    const currentVersion = entry.minVersion;
+    const currentVersion = entry.minVersion
     entry.minVersion = version
 
     if (!options.dryRun) {
-      await writeModuleInfo(module, moduleInfo, options);
+      await writeModuleInfo(module, moduleInfo, options)
     }
 
     return {
       id: moduleInfo.id,
       oldVersion: currentVersion,
-      newVersion: version
+      newVersion: version,
     }
   }
+
   return {
-    id: moduleInfo.id
+    id: moduleInfo.id,
   }
 }
 
 export {
   increment,
   updateDependency,
-};
+}
