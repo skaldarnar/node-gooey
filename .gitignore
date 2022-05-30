@@ -6,10 +6,8 @@
 # Logs
 logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
+*-debug.log
+*-error.log
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
@@ -240,4 +238,11 @@ fabric.properties
 
 # End of https://www.gitignore.io/api/intellij
 
+### Oclif ###
+# https://oclif.io/docs
 
+/.nyc_output
+/dist
+/lib
+/tmp
+oclif.manifest.json
