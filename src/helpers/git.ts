@@ -59,7 +59,7 @@ type UpdateOptions = {
   force: boolean;
 };
 
-type UpdateResult = {
+export type UpdateResult = {
   dir: string,
   name: string,
   before: StatusResult,
@@ -88,17 +88,17 @@ async function update(dir: string, options: UpdateOptions): Promise<UpdateResult
   }
 }
 
-type ResetOptions = {
+export type ResetOptions = {
   force: boolean;
   fetch: boolean;
 };
 
-type ResetResult = {
+export type ResetResult = {
   dir: string,
   name: string,
   before: StatusResult,
   after: StatusResult,
-  summary: { summary: string },
+  summary: string | GitError,
   currentBranch: string,
 }
 
@@ -106,15 +106,13 @@ async function reset(dir: string, options: ResetOptions): Promise<ResetResult> {
   const _git = simpleGit({baseDir: dir, binary: 'git'})
   const currentBranch = await _getRef(_git, false)
   const before = await _status(_git)
-  await _resetCmd(_git, options)
+  const result = await _resetCmd(_git, options)
   const after = await _status(_git)
 
   // Since we use a 'raw' command to reset to the default branch, there is no
   // command summary available. To bridge this gap, we manually compute the
   // diff between the 'before' and 'after' states.
-  const summary = {
-    summary: await _git.diff([before.ref, after.ref]),
-  }
+  const summary = typeof result === 'string' ? await _git.diff([before.ref, after.ref]) : result
 
   // TODO: type definition for this return type
   return {
