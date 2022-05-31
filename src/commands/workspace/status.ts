@@ -1,83 +1,97 @@
 import {Command, Flags} from '@oclif/core'
 import chalk = require('chalk')
+import { Listr, ListrTask } from 'listr2';
 import asyncPool = require('tiny-async-pool');
 
 import {status, StatusSummary} from '../../helpers/git'
 import {findRoot, listLibs, listModules} from '../../helpers/workspace'
 
 type StatusOptions = {
-  offline: boolean;
-};
+  offline: boolean,
+  verbose: boolean
+}
 
 export default class Status extends Command {
   static description = 'Inspect the workspace or a specific workspace element.';
 
   static examples = ['$ gooey-cli workspace:status'];
 
+  static categories = ['root', 'libs', 'modules'];
+
   static flags = {
     offline: Flags.boolean({
       description: chalk`fetch remote state before showing state ({italic git fetch})`,
       default: false,
     }),
-  };
-
-  static categories = ['root', 'libs', 'modules'];
-  static args = [
-    {
+    categories: Flags.string({
       name: 'categories',
       description: chalk`the categories of sub-repositories to work on. (default {italic all})`,
       default: this.categories,
       options: this.categories,
-    },
-  ];
+      multiple: true,
+    }),
+    verbose: Flags.boolean(),
+  };
+
+  static args = [];
 
   async run(): Promise<void> {
     const {args, flags} = await this.parse(Status)
 
     const workspace = await findRoot(process.cwd())
 
-    for (const category of args.categories) {
-      this._view(category, workspace, {...flags})
-    }
+    const tasks = flags.categories.map(c => this.categoryTask(workspace, c, flags))
+
+    new Listr(
+      tasks, {
+        concurrent: true,
+        rendererOptions: {
+          collapse: false
+        }
+      }
+    ).run()
   }
 
-  async _view(category: string, workspace: string, options: StatusOptions): Promise<void> {
-    const task = async (m: string) => status(m, !options.offline)
+  async repos(category: string, options: {workspace: string}): Promise<string[]> {
     switch (category) {
-    case 'root': {
-      console.log(chalk.bold('workspace'))
-      const result = await task(workspace)
-      this._statusMsg('engine', result, '  ')
-      break
+      case 'root':
+        return [options.workspace]
+      case 'libs':
+        return listLibs(options.workspace)
+      case 'modules':
+        return listModules(options.workspace)
     }
 
-    case 'modules': {
-      const modules = await listModules(workspace)
-      if (modules.length > 0) {
-        console.log(chalk`{bold ${category}}`)
-        for await (const result of asyncPool(8, modules, task)) {
-          this._statusMsg('module', result, '  ')
-        }
-      }
+    throw new Error(`Unknown workspace category "${category}"`)
+  }
 
-      break
-    }
-
-    case 'libs': {
-      const libs = await listLibs(workspace)
-      if (libs.length > 0) {
-        console.log(chalk`{bold ${category}}`)
-        for await (const result of asyncPool(8, libs, task)) {
-          this._statusMsg('lib', result, '  ')
-        }
-      }
-
-      break
-    }
+  categoryTask(workspace: string, category: string, options: StatusOptions): ListrTask {  
+    return {
+      title: chalk.bold(category),
+      skip: async (ctx) => {
+        const repos = await this.repos(category, {workspace})
+        ctx.repos = repos
+        return repos.length === 0
+      },
+      task: async (ctx, task) => {
+        const repos = ctx.repos as string[]
+        const tasks = repos.map(r => this.repoTask(category, r, options))
+        return task.newListr(tasks, {concurrent: true})}
     }
   }
 
-  _remoteStatusSymbol(ahead: number, behind: number): string {
+  repoTask(category: string, repo: string, options: StatusOptions): ListrTask {
+    return {
+      title: repo,
+      task: async (_, task) => {
+        const info = await status(repo, !options.offline)
+        const msg = await this.statusMsg(category, info, options)
+        task.title = msg
+      }
+    }
+  }
+
+  remoteStatusSymbol(ahead: number, behind: number): string {
     if (ahead && behind) {
       return chalk.bold('±')
     }
@@ -93,7 +107,7 @@ export default class Status extends Command {
     return chalk.bold(' ')
   }
 
-  _statusMsg(category: string, info: StatusSummary, indent: string): void {
+  statusMsg(category: string, info: StatusSummary, options: StatusOptions): string {
     const branch = (info: StatusSummary) => {
       const b = info.status.current ?? ''
       if (b.length > 16) {
@@ -103,10 +117,9 @@ export default class Status extends Command {
       return b.padEnd(18)
     }
 
-    let msg = indent || ''
-    msg += chalk`{dim ${category.padStart(6)}} ${info.name.padEnd(32)}`
+    let msg = chalk`{dim ${category.padStart(8)}} ${info.name.padEnd(32)}`
 
-    const statusSymbol = this._remoteStatusSymbol(
+    const statusSymbol = this.remoteStatusSymbol(
       info.status.ahead,
       info.status.behind,
     )
@@ -123,10 +136,13 @@ export default class Status extends Command {
       msg += chalk.cyan(branch(info))
       msg += chalk.grey(info.status.ref.slice(0, 8))
     } else {
-      msg += chalk`{yellow ${info.status.current}}`
-      for (const f of info.status.files)  (msg += `\n\t${f.index}${f.working_dir} ${f.path}`)
+      msg += chalk.yellow(branch(info))
+      msg += chalk.grey(info.status.ref.slice(0, 8))
+      if (options.verbose) {
+        for (const f of info.status.files)  (msg += `\n\t${f.index}${f.working_dir} ${f.path}`)
+      }      
     }
 
-    console.log(msg)
+    return msg
   }
 }
