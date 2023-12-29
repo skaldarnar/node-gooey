@@ -37,7 +37,7 @@ export default class Status extends Command {
     const workspace = await findRoot(process.cwd())
 
     for (const category of args.categories) {
-      this._view(category, workspace, {...flags})
+      await this._view(category, workspace, {...flags})
     }
   }
 

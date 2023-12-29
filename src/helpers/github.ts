@@ -2,6 +2,8 @@
 import {Octokit} from '@octokit/rest'
 import {parse} from 'dot-properties'
 import execa = require('execa')
+import {copyFile} from 'node:fs/promises'
+import {join} from 'node:path';
 
 const indexRepo = {
   owner: 'Terasology',
@@ -43,9 +45,18 @@ const availableDistributions = async (): Promise<string[]> =>
   })
 
 async function cloneModules(modules: string[]) {
-  await execa(
-    './groovyw', ['module', 'get', ...modules], {stdio: 'inherit'},
-  )
+  // await execa(
+  //   './groovyw', ['module', 'get', ...modules], {stdio: 'inherit'},
+  // )
+  const template = join(".", "templates", "build.gradle")
+  for (const module of modules) {
+    const modulePath = join(".", "modules", module);
+    await execa(
+      'git', ['clone', `https://github.com/Terasology/${module}`, modulePath],
+      {stdio: 'inherit'},
+    );
+    await copyFile(template, join(modulePath, "build.gradle"));
+  }
 }
 
 const cloneDistribution = async (distro: string): Promise<void> => {
